@@ -175,14 +175,22 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     bh_equity = (1 + ret).cumprod()
 
     # Ensure all series are 1-dimensional and properly aligned
+    def flatten_if_needed(arr):
+        """Flatten array if it's 2D with shape (n, 1)"""
+        if hasattr(arr, 'values'):
+            arr = arr.values
+        if hasattr(arr, 'flatten'):
+            return arr.flatten()
+        return np.array(arr).flatten()
+    
     bt = pd.DataFrame({
-        "price": pd.Series(prices, index=df.index),
-        "position": pd.Series(position, index=df.index),
-        "ret": pd.Series(ret, index=df.index),
-        "strategy_ret": pd.Series(strategy_ret, index=df.index),
-        "equity": pd.Series(equity, index=df.index),
-        "bh_equity": pd.Series(bh_equity, index=df.index),
-    })
+        "price": flatten_if_needed(prices),
+        "position": flatten_if_needed(position),
+        "ret": flatten_if_needed(ret),
+        "strategy_ret": flatten_if_needed(strategy_ret),
+        "equity": flatten_if_needed(equity),
+        "bh_equity": flatten_if_needed(bh_equity),
+    }, index=df.index)
 
     # Extract trades from position change signals
     trade_entries = df.index[df["position_change"] > 0.5]
