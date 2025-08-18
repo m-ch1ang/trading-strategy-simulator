@@ -4,10 +4,4 @@ pandas==2.2.2
 numpy==1.26.4
 plotly==5.23.0
 scipy==1.11.4
-# Pin HTTP stack for macOS LibreSSL compatibility (avoid urllib3 v2 OpenSSL check)
-requests==2.31.0
-urllib3==1.26.18
-certifi>=2024.2.2
-charset-normalizer>=3.3.2
-idna>=3.6
 pandas-datareader==0.10.0
