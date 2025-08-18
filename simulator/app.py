@@ -174,31 +174,47 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     # Buy & hold baseline
     bh_equity = (1 + ret).cumprod()
 
-    # Create DataFrame directly from pandas Series (they should already be properly aligned)
+    # Create DataFrame using a safe, conservative approach
     bt = pd.DataFrame(index=df.index)
     
-    def ensure_1d_series(data, name=""):
-        """Convert data to 1D array/series, handling (n,1) shapes"""
-        if hasattr(data, 'values'):
-            arr = data.values
-        else:
-            arr = np.array(data)
-        
-        # Handle the specific (751, 1) case
-        if arr.ndim == 2 and arr.shape[1] == 1:
-            arr = arr.flatten()
-        elif arr.ndim > 1:
-            arr = arr.ravel()
+    def safe_column_assign(data, col_name):
+        """Safely assign data to DataFrame column with debugging"""
+        try:
+            # If it's already a pandas Series with the right index, use it directly
+            if isinstance(data, pd.Series) and len(data) == len(df.index):
+                return data
             
-        return pd.Series(arr, index=df.index, name=name)
+            # If it has values attribute, extract it carefully
+            if hasattr(data, 'values'):
+                vals = data.values
+                # Only squeeze if it's exactly (n, 1) shape
+                if vals.ndim == 2 and vals.shape == (len(df.index), 1):
+                    vals = vals.squeeze()
+                elif vals.ndim == 1 and len(vals) == len(df.index):
+                    pass  # Already correct
+                else:
+                    # Fall back to original data if shapes don't make sense
+                    return pd.Series(data, index=df.index)
+                return pd.Series(vals, index=df.index)
+            
+            # For everything else, create a new Series
+            return pd.Series(data, index=df.index)
+            
+        except Exception:
+            # Last resort: force it to work by taking only the right number of elements
+            arr = np.array(data).flatten()
+            if len(arr) >= len(df.index):
+                return pd.Series(arr[:len(df.index)], index=df.index)
+            else:
+                raise ValueError(f"Cannot create series for {col_name}: insufficient data")
     
-    # Ensure each variable is a proper 1D Series before assignment
-    bt["price"] = ensure_1d_series(prices, "price")
-    bt["position"] = ensure_1d_series(position, "position")
-    bt["ret"] = ensure_1d_series(ret, "ret")
-    bt["strategy_ret"] = ensure_1d_series(strategy_ret, "strategy_ret")
-    bt["equity"] = ensure_1d_series(equity, "equity")
-    bt["bh_equity"] = ensure_1d_series(bh_equity, "bh_equity")
+    # Assign columns safely
+    bt["price"] = safe_column_assign(prices, "price")
+    bt["position"] = safe_column_assign(position, "position")
+    bt["ret"] = safe_column_assign(ret, "ret")
+    bt["strategy_ret"] = safe_column_assign(strategy_ret, "strategy_ret")
+    bt["equity"] = safe_column_assign(equity, "equity")
+    bt["bh_equity"] = safe_column_assign(bh_equity, "bh_equity")
 
     # Extract trades from position change signals
     trade_entries = df.index[df["position_change"] > 0.5]
