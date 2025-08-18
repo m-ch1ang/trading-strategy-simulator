@@ -235,7 +235,7 @@ def main():
     st.set_page_config(page_title="Trading Strategy Simulator", layout="wide")
 
     st.title("Trading Strategy Simulator")
-    st.caption("Educational demo. Not investment advice.")
+    st.caption("DISCLAIMER: Investing in financial markets involves risk. Past performance is not indicative of future results. Investors may experience partial or total loss of capital. This tool is for educational and informational purposes only and does not constitute financial advice. Always conduct your own research or consult a qualified financial advisor before making investment decisions.")
 
     # Sidebar inputs
     with st.sidebar:
