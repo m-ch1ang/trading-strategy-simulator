@@ -332,9 +332,9 @@ def main():
         eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name="Buy & Hold"))
         eq_fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10))
 
-        # Metrics
-        total_return = bt["equity"].iloc[-1] - 1
-        bh_return = bt["bh_equity"].iloc[-1] - 1
+        # Metrics - ensure we get scalar values, not Series
+        total_return = float(bt["equity"].iloc[-1]) - 1
+        bh_return = float(bt["bh_equity"].iloc[-1]) - 1
         sr = sharpe_ratio(bt["strategy_ret"])
         mdd = max_drawdown(bt["equity"])  # negative number
 
@@ -357,8 +357,8 @@ def main():
             tshow = trades_df.copy()
             tshow["date_in"] = pd.to_datetime(tshow["date_in"]).dt.strftime("%Y-%m-%d")
             tshow["date_out"] = pd.to_datetime(tshow["date_out"]).dt.strftime("%Y-%m-%d")
-            tshow["pnl"] = tshow["pnl"].map(lambda x: f"${x:,.2f}")
-            tshow["return_pct"] = tshow["return_pct"].map(lambda x: f"{x:.2f}%")
+            tshow["pnl"] = tshow["pnl"].map(lambda x: f"${float(x):,.2f}")
+            tshow["return_pct"] = tshow["return_pct"].map(lambda x: f"{float(x):.2f}%")
             st.dataframe(tshow, use_container_width=True, hide_index=True)
         else:
             st.info("No completed trades in the period.")
