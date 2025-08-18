@@ -176,12 +176,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
 
     # Create DataFrame directly from pandas Series (they should already be properly aligned)
     bt = pd.DataFrame(index=df.index)
-    bt["price"] = prices
-    bt["position"] = position  
-    bt["ret"] = ret
-    bt["strategy_ret"] = strategy_ret
-    bt["equity"] = equity
-    bt["bh_equity"] = bh_equity
+    
+    # Ensure each variable is a proper 1D Series before assignment
+    bt["price"] = pd.Series(prices).squeeze() if hasattr(prices, 'squeeze') else prices
+    bt["position"] = pd.Series(position).squeeze() if hasattr(position, 'squeeze') else position
+    bt["ret"] = pd.Series(ret).squeeze() if hasattr(ret, 'squeeze') else ret
+    bt["strategy_ret"] = pd.Series(strategy_ret).squeeze() if hasattr(strategy_ret, 'squeeze') else strategy_ret
+    bt["equity"] = pd.Series(equity).squeeze() if hasattr(equity, 'squeeze') else equity
+    bt["bh_equity"] = pd.Series(bh_equity).squeeze() if hasattr(bh_equity, 'squeeze') else bh_equity
 
     # Extract trades from position change signals
     trade_entries = df.index[df["position_change"] > 0.5]
