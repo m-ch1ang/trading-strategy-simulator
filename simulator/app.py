@@ -175,21 +175,34 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     bh_equity = (1 + ret).cumprod()
 
     # Ensure all series are 1-dimensional and properly aligned
-    def flatten_if_needed(arr):
-        """Flatten array if it's 2D with shape (n, 1)"""
+    def safe_series(arr, idx):
+        """Safely convert to 1D series with correct index alignment"""
         if hasattr(arr, 'values'):
-            arr = arr.values
-        if hasattr(arr, 'flatten'):
-            return arr.flatten()
-        return np.array(arr).flatten()
+            # If it's a pandas Series/DataFrame, get the values
+            values = arr.values
+        else:
+            values = np.array(arr)
+        
+        # If it's 2D with shape (n, 1), squeeze to 1D
+        if values.ndim == 2 and values.shape[1] == 1:
+            values = values.squeeze()
+        elif values.ndim > 1:
+            # If it's truly multi-dimensional, take first column or flatten appropriately
+            values = values.ravel()
+        
+        # Ensure the length matches the index
+        if len(values) != len(idx):
+            raise ValueError(f"Data length {len(values)} doesn't match index length {len(idx)}")
+            
+        return values
     
     bt = pd.DataFrame({
-        "price": flatten_if_needed(prices),
-        "position": flatten_if_needed(position),
-        "ret": flatten_if_needed(ret),
-        "strategy_ret": flatten_if_needed(strategy_ret),
-        "equity": flatten_if_needed(equity),
-        "bh_equity": flatten_if_needed(bh_equity),
+        "price": safe_series(prices, df.index),
+        "position": safe_series(position, df.index),
+        "ret": safe_series(ret, df.index),
+        "strategy_ret": safe_series(strategy_ret, df.index),
+        "equity": safe_series(equity, df.index),
+        "bh_equity": safe_series(bh_equity, df.index),
     }, index=df.index)
 
     # Extract trades from position change signals
