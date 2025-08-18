@@ -174,36 +174,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     # Buy & hold baseline
     bh_equity = (1 + ret).cumprod()
 
-    # Ensure all series are 1-dimensional and properly aligned
-    def safe_series(arr, idx):
-        """Safely convert to 1D series with correct index alignment"""
-        if hasattr(arr, 'values'):
-            # If it's a pandas Series/DataFrame, get the values
-            values = arr.values
-        else:
-            values = np.array(arr)
-        
-        # If it's 2D with shape (n, 1), squeeze to 1D
-        if values.ndim == 2 and values.shape[1] == 1:
-            values = values.squeeze()
-        elif values.ndim > 1:
-            # If it's truly multi-dimensional, take first column or flatten appropriately
-            values = values.ravel()
-        
-        # Ensure the length matches the index
-        if len(values) != len(idx):
-            raise ValueError(f"Data length {len(values)} doesn't match index length {len(idx)}")
-            
-        return values
-    
-    bt = pd.DataFrame({
-        "price": safe_series(prices, df.index),
-        "position": safe_series(position, df.index),
-        "ret": safe_series(ret, df.index),
-        "strategy_ret": safe_series(strategy_ret, df.index),
-        "equity": safe_series(equity, df.index),
-        "bh_equity": safe_series(bh_equity, df.index),
-    }, index=df.index)
+    # Create DataFrame directly from pandas Series (they should already be properly aligned)
+    bt = pd.DataFrame(index=df.index)
+    bt["price"] = prices
+    bt["position"] = position  
+    bt["ret"] = ret
+    bt["strategy_ret"] = strategy_ret
+    bt["equity"] = equity
+    bt["bh_equity"] = bh_equity
 
     # Extract trades from position change signals
     trade_entries = df.index[df["position_change"] > 0.5]
