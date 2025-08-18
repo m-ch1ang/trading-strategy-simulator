@@ -174,14 +174,15 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     # Buy & hold baseline
     bh_equity = (1 + ret).cumprod()
 
+    # Ensure all series are 1-dimensional and properly aligned
     bt = pd.DataFrame({
-        "price": prices,
-        "position": position,
-        "ret": ret,
-        "strategy_ret": strategy_ret,
-        "equity": equity,
-        "bh_equity": bh_equity,
-    }, index=df.index)
+        "price": pd.Series(prices, index=df.index),
+        "position": pd.Series(position, index=df.index),
+        "ret": pd.Series(ret, index=df.index),
+        "strategy_ret": pd.Series(strategy_ret, index=df.index),
+        "equity": pd.Series(equity, index=df.index),
+        "bh_equity": pd.Series(bh_equity, index=df.index),
+    })
 
     # Extract trades from position change signals
     trade_entries = df.index[df["position_change"] > 0.5]
