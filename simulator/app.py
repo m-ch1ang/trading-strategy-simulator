@@ -92,21 +92,41 @@ def load_data(ticker: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
 
     # Synthetic fallback to keep UI functional
     try:
-        idx = pd.date_range(start_dt, end_dt, freq="B")
-        if len(idx) >= 20:
-            np.random.seed(42)
-            steps = np.random.normal(0, 0.01, size=len(idx))
-            price = 100 * np.exp(np.cumsum(steps))
+        # Create a more robust date range
+        start_date = pd.Timestamp(start_dt).normalize()
+        end_date = pd.Timestamp(end_dt).normalize()
+        
+        # Generate business days between start and end
+        idx = pd.date_range(start_date, end_date, freq="D")
+        idx = idx[idx.dayofweek < 5]  # Remove weekends
+        
+        if len(idx) >= 10:  # Need at least 10 days of data
+            np.random.seed(42)  # Consistent seed for reproducible data
+            n_days = len(idx)
+            
+            # Generate realistic price movement
+            initial_price = 100.0
+            daily_returns = np.random.normal(0.0008, 0.02, n_days)  # ~0.2% daily drift, 2% volatility
+            price_series = initial_price * np.exp(np.cumsum(daily_returns))
+            
+            # Generate OHLC data
+            noise_factor = 0.005
             df = pd.DataFrame({
-                "open": price * (1 + np.random.normal(0, 0.001, size=len(idx))),
-                "high": price * (1 + abs(np.random.normal(0, 0.002, size=len(idx)))),
-                "low": price * (1 - abs(np.random.normal(0, 0.002, size=len(idx)))),
-                "close": price,
-                "volume": np.random.randint(1e5, 5e5, size=len(idx)),
+                "open": price_series * (1 + np.random.normal(0, noise_factor, n_days)),
+                "high": price_series * (1 + np.abs(np.random.normal(0, noise_factor, n_days))),
+                "low": price_series * (1 - np.abs(np.random.normal(0, noise_factor, n_days))),
+                "close": price_series,
+                "volume": np.random.randint(50000, 200000, n_days),
             }, index=idx)
+            
+            # Ensure high >= close >= low and high >= open >= low
+            df["high"] = np.maximum(df["high"], np.maximum(df["open"], df["close"]))
+            df["low"] = np.minimum(df["low"], np.minimum(df["open"], df["close"]))
+            
             df.index.name = "date"
             return df, "synthetic"
-    except Exception:
+    except Exception as e:
+        st.error(f"Synthetic data generation failed: {str(e)}")
         pass
 
     # If everything failed, return empty
@@ -303,12 +323,23 @@ def main():
 
     if run:
         with st.spinner("Loading data and running backtest..."):
-            df, data_source = load_data(ticker.strip().upper(), start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
-            if df.empty:
-                st.warning("No data loaded. Check ticker or date range.")
+            try:
+                df, data_source = load_data(ticker.strip().upper(), start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
+                
+                if df.empty:
+                    st.warning(f"No data loaded for {ticker.upper()}. Data source attempted: {data_source}. Check ticker or date range.")
+                    return
+                    
+                # Debug info
+                st.sidebar.info(f"Data source: {data_source} | Rows: {len(df)} | Date range: {df.index[0].date()} to {df.index[-1].date()}")
+                
+                sig_df = compute_signals(df, strategy, params)
+                bt, trades_df = backtest(sig_df, slippage_bps=slippage_bps)
+                
+            except Exception as e:
+                st.error(f"Error during backtesting: {str(e)}")
+                st.error("Please try again or contact support if the issue persists.")
                 return
-            sig_df = compute_signals(df, strategy, params)
-            bt, trades_df = backtest(sig_df, slippage_bps=slippage_bps)
 
         # Data source banner
         if data_source in {"stooq", "synthetic"}:
