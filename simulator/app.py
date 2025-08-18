@@ -151,23 +151,46 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         long = int(params.get("long", 50))
         if short >= long:
             long = short + 1
+            
+        # Calculate moving averages
         df["ma_short"] = df["close"].rolling(short).mean()
         df["ma_long"] = df["close"].rolling(long).mean()
+        
+        # Initialize signal column
         df["signal"] = 0
-        df.loc[df.index[long-1]:, "signal"] = np.where(df.loc[df.index[long-1]:, "ma_short"] > df.loc[df.index[long-1]:, "ma_long"], 1, 0)
+        
+        # Only compute signals where we have valid MA values
+        valid_idx = df["ma_long"].notna()
+        
+        # Generate signals: 1 when short MA > long MA, 0 otherwise
+        df.loc[valid_idx, "signal"] = np.where(
+            df.loc[valid_idx, "ma_short"] > df.loc[valid_idx, "ma_long"], 1, 0
+        )
+        
+        # Calculate position changes (entry/exit points)
         df["position_change"] = df["signal"].diff().fillna(0)
     elif strategy == "RSI Strategy":
         period = int(params.get("period", 14))
         oversold = float(params.get("oversold", 30))
         overbought = float(params.get("overbought", 70))
+        
+        # Calculate RSI
         df["rsi"] = calc_rsi(df["close"], period)
+        
+        # Initialize signal
         df["signal"] = 0
-        # Enter long when RSI crosses up oversold; exit when crosses down overbought
-        df["long_entry"] = (df["rsi"].shift(1) < oversold) & (df["rsi"] >= oversold)
-        df["long_exit"] = (df["rsi"].shift(1) > overbought) & (df["rsi"] <= overbought)
-        df.loc[df["long_entry"], "signal"] = 1
-        df.loc[df["long_exit"], "signal"] = 0
-        df["signal"] = df["signal"].replace(to_replace=0, method="ffill").fillna(0)
+        
+        # Only compute where RSI is valid
+        valid_idx = df["rsi"].notna()
+        
+        # Simple RSI strategy: long when RSI < oversold, flat when RSI > overbought
+        df.loc[valid_idx & (df["rsi"] <= oversold), "signal"] = 1  # Buy signal
+        df.loc[valid_idx & (df["rsi"] >= overbought), "signal"] = 0  # Sell signal
+        
+        # Forward fill signals to maintain positions
+        df["signal"] = df["signal"].replace(0, np.nan).fillna(method="ffill").fillna(0)
+        
+        # Calculate position changes
         df["position_change"] = df["signal"].diff().fillna(0)
     else:
         df["signal"] = 0
