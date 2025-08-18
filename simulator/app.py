@@ -272,10 +272,9 @@ def max_drawdown(equity: pd.Series) -> float:
 # -------------------------
 
 def main():
-    st.set_page_config(page_title="Trading Strategy Simulator v2.0", layout="wide")
+    st.set_page_config(page_title="Trading Strategy Simulator", layout="wide")
 
-    st.title("Trading Strategy Simulator v2.0 (Stooq Data)")
-    st.info("✅ Yahoo Finance removed - using stable Stooq data source")
+    st.title("Trading Strategy Simulator")
     st.caption("DISCLAIMER: Investing in financial markets involves risk. Past performance is not indicative of future results. Investors may experience partial or total loss of capital. This tool is for educational and informational purposes only and does not constitute financial advice. Always conduct your own research or consult a qualified financial advisor before making investment decisions.")
 
     # Sidebar inputs
@@ -333,7 +332,7 @@ def main():
         if data_source == "synthetic":
             st.info("📊 Using synthetic data because historical data could not be fetched. Charts are for demo only.")
         elif data_source == "stooq":
-            st.success("📈 Using Stooq historical data - perfect for backtesting!")
+            st.success("📈 Using Stooq historical data")
 
         # Price chart with markers
         price_fig = go.Figure()
