@@ -177,13 +177,28 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     # Create DataFrame directly from pandas Series (they should already be properly aligned)
     bt = pd.DataFrame(index=df.index)
     
+    def ensure_1d_series(data, name=""):
+        """Convert data to 1D array/series, handling (n,1) shapes"""
+        if hasattr(data, 'values'):
+            arr = data.values
+        else:
+            arr = np.array(data)
+        
+        # Handle the specific (751, 1) case
+        if arr.ndim == 2 and arr.shape[1] == 1:
+            arr = arr.flatten()
+        elif arr.ndim > 1:
+            arr = arr.ravel()
+            
+        return pd.Series(arr, index=df.index, name=name)
+    
     # Ensure each variable is a proper 1D Series before assignment
-    bt["price"] = pd.Series(prices).squeeze() if hasattr(prices, 'squeeze') else prices
-    bt["position"] = pd.Series(position).squeeze() if hasattr(position, 'squeeze') else position
-    bt["ret"] = pd.Series(ret).squeeze() if hasattr(ret, 'squeeze') else ret
-    bt["strategy_ret"] = pd.Series(strategy_ret).squeeze() if hasattr(strategy_ret, 'squeeze') else strategy_ret
-    bt["equity"] = pd.Series(equity).squeeze() if hasattr(equity, 'squeeze') else equity
-    bt["bh_equity"] = pd.Series(bh_equity).squeeze() if hasattr(bh_equity, 'squeeze') else bh_equity
+    bt["price"] = ensure_1d_series(prices, "price")
+    bt["position"] = ensure_1d_series(position, "position")
+    bt["ret"] = ensure_1d_series(ret, "ret")
+    bt["strategy_ret"] = ensure_1d_series(strategy_ret, "strategy_ret")
+    bt["equity"] = ensure_1d_series(equity, "equity")
+    bt["bh_equity"] = ensure_1d_series(bh_equity, "bh_equity")
 
     # Extract trades from position change signals
     trade_entries = df.index[df["position_change"] > 0.5]
