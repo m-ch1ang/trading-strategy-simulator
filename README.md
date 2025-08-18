@@ -26,5 +26,7 @@ streamlit run simulator/app.py
 ```
 
 ## Notes
-- Data source: Yahoo Finance via `yfinance`.
+- Primary Data source: Yahoo Finance via `yfinance`.
+- Fallback data source: Stooq via `pandas-datareader`.
+- Last resort: Synthetic data (for demo/testing only). 
 - This is a teaching/demo tool; not investment advice.
