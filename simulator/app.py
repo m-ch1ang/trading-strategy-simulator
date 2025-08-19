@@ -265,11 +265,11 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             "total_shares": shares_bought
         }
         
-        # Calculate returns based on share value
+        # Calculate returns based on actual dollar performance
+        portfolio_values = shares_bought * prices
+        equity = portfolio_values / amount  # Normalize to show growth from $1
+        strategy_ret = equity.pct_change().fillna(0)
         position = pd.Series(shares_bought, index=df.index)
-        ret = prices.pct_change().fillna(0)
-        strategy_ret = position * ret / amount  # Normalize by initial investment
-        equity = (1 + strategy_ret).cumprod()
     else:
         # Original logic for other strategies
         position = df["signal"].shift(1).fillna(0)  # trade at next open/close assumption
