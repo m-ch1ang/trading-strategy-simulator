@@ -415,9 +415,9 @@ def main():
         with col1:
             start_date = st.date_input("Start Date", value=datetime.today() - timedelta(days=365 * 3))
         with col2:
-            end_date = st.date_input("End Date", value=datetime.today())
+            end_date = st.date_input("End Date", value=datetime.today(), max_value=datetime.today())
 
-        strategy = st.selectbox("Strategy", ["Buy & Hold", "Dollar Cost Averaging", "Moving Average Crossover", "RSI Strategy"])
+        strategy = st.selectbox("Strategy", ["Dollar Cost Averaging", "Buy & Hold", "Moving Average Crossover", "RSI Strategy"])
 
         params = {}
         if strategy == "Moving Average Crossover":
