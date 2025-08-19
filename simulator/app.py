@@ -156,29 +156,94 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         
         # Calculate position changes
         df["position_change"] = df["signal"].diff().fillna(0)
+    elif strategy == "Buy & Hold":
+        # Simple buy and hold: always in position
+        df["signal"] = 1  # Always long
+        df["position_change"] = 0  # No position changes after initial buy
+        # Set initial buy signal
+        df.iloc[0, df.columns.get_loc("position_change")] = 1  # Initial buy
+    elif strategy == "Dollar Cost Averaging":
+        frequency = params.get("frequency", "Monthly")
+        amount = float(params.get("amount", 1000))
+        
+        # Initialize signals
+        df["signal"] = 0
+        df["position_change"] = 0
+        df["dca_amount"] = 0.0  # Track dollar amounts
+        
+        # Determine frequency in business days
+        freq_map = {"Weekly": 5, "Monthly": 22, "Quarterly": 66}
+        freq_days = freq_map.get(frequency, 22)
+        
+        # Calculate DCA purchase dates
+        purchase_dates = []
+        current_idx = 0
+        while current_idx < len(df):
+            purchase_dates.append(df.index[current_idx])
+            current_idx += freq_days
+        
+        # Mark purchase signals
+        for date in purchase_dates:
+            if date in df.index:
+                df.loc[date, "position_change"] = 1  # Buy signal
+                df.loc[date, "dca_amount"] = amount
+        
+        # Calculate cumulative position (shares owned)
+        cumulative_shares = 0
+        for i, (date, row) in enumerate(df.iterrows()):
+            if row["position_change"] > 0:
+                # Buy more shares with fixed dollar amount
+                shares_bought = amount / row["close"]
+                cumulative_shares += shares_bought
+            df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
     else:
         df["signal"] = 0
         df["position_change"] = 0
     return df
 
 
-def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame, pd.DataFrame]:
+def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}) -> tuple[pd.DataFrame, pd.DataFrame]:
     if df.empty:
         return df, pd.DataFrame(columns=["date_in", "date_out", "pnl", "return_pct"]) 
 
     prices = df["close"]
-    position = df["signal"].shift(1).fillna(0)  # trade at next open/close assumption
+    
+    # Handle DCA strategy differently
+    if strategy == "Dollar Cost Averaging":
+        amount = float(params.get("amount", 1000))
+        
+        # Calculate returns based on actual dollar investments
+        total_invested = 0
+        total_shares = 0
+        equity_values = []
+        
+        for i, (date, row) in enumerate(df.iterrows()):
+            if row["position_change"] > 0:  # Purchase day
+                shares_bought = amount / row["close"]
+                total_shares += shares_bought
+                total_invested += amount
+            
+            # Current portfolio value
+            current_value = total_shares * row["close"]
+            equity_values.append(current_value / total_invested if total_invested > 0 else 1.0)
+        
+        equity = pd.Series(equity_values, index=df.index)
+        strategy_ret = equity.pct_change().fillna(0)
+        position = df["signal"]  # Use the cumulative shares as position
+    else:
+        # Original logic for other strategies
+        position = df["signal"].shift(1).fillna(0)  # trade at next open/close assumption
+        ret = prices.pct_change().fillna(0)
+        strategy_ret = position * ret
 
-    ret = prices.pct_change().fillna(0)
-    strategy_ret = position * ret
+        # apply simple slippage/fees on position changes
+        trade_cost = abs(df["position_change"]) * (slippage_bps / 10000.0)
+        strategy_ret = strategy_ret - trade_cost
 
-    # apply simple slippage/fees on position changes
-    trade_cost = abs(df["position_change"]) * (slippage_bps / 10000.0)
-    strategy_ret = strategy_ret - trade_cost
-
-    equity = (1 + strategy_ret).cumprod()
+        equity = (1 + strategy_ret).cumprod()
 
     # Buy & hold baseline
+    ret = prices.pct_change().fillna(0)
     bh_equity = (1 + ret).cumprod()
 
     # Create DataFrame using a safe, conservative approach
@@ -224,33 +289,48 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0) -> tuple[pd.DataFrame,
     bt["bh_equity"] = safe_column_assign(bh_equity, "bh_equity")
 
     # Extract trades from position change signals
-    trade_entries = df.index[df["position_change"] > 0.5]
-    trade_exits = df.index[df["position_change"] < -0.5]
+    if strategy == "Dollar Cost Averaging":
+        # For DCA, each purchase is a separate "trade"
+        amount = float(params.get("amount", 1000))
+        trades = []
+        for date in df.index[df["position_change"] > 0.5]:
+            px_in = prices.loc[date]
+            shares_bought = amount / px_in
+            # For DCA, we show each purchase as a trade from purchase to end
+            px_out = prices.iloc[-1]  # Final price
+            pnl = (px_out - px_in) * shares_bought
+            ret_pct = (px_out / px_in - 1) * 100
+            trades.append({"date_in": date, "date_out": df.index[-1], "pnl": pnl, "return_pct": ret_pct})
+        trades_df = pd.DataFrame(trades)
+    else:
+        # Original trade extraction logic for other strategies
+        trade_entries = df.index[df["position_change"] > 0.5]
+        trade_exits = df.index[df["position_change"] < -0.5]
 
-    # If an entry without an exit by end, assume exit on last bar
-    entries = list(trade_entries)
-    exits = list(trade_exits)
-    trades = []
-    i = j = 0
-    while i < len(entries):
-        entry_date = entries[i]
-        # find the first exit after entry
-        exit_date = None
-        while j < len(exits) and exits[j] <= entry_date:
-            j += 1
-        if j < len(exits):
-            exit_date = exits[j]
-            j += 1
-        else:
-            exit_date = df.index[-1]
-        px_in = prices.loc[entry_date]
-        px_out = prices.loc[exit_date]
-        pnl = px_out - px_in
-        ret_pct = (px_out / px_in - 1) * 100
-        trades.append({"date_in": entry_date, "date_out": exit_date, "pnl": pnl, "return_pct": ret_pct})
-        i += 1
+        # If an entry without an exit by end, assume exit on last bar
+        entries = list(trade_entries)
+        exits = list(trade_exits)
+        trades = []
+        i = j = 0
+        while i < len(entries):
+            entry_date = entries[i]
+            # find the first exit after entry
+            exit_date = None
+            while j < len(exits) and exits[j] <= entry_date:
+                j += 1
+            if j < len(exits):
+                exit_date = exits[j]
+                j += 1
+            else:
+                exit_date = df.index[-1]
+            px_in = prices.loc[entry_date]
+            px_out = prices.loc[exit_date]
+            pnl = px_out - px_in
+            ret_pct = (px_out / px_in - 1) * 100
+            trades.append({"date_in": entry_date, "date_out": exit_date, "pnl": pnl, "return_pct": ret_pct})
+            i += 1
 
-    trades_df = pd.DataFrame(trades)
+        trades_df = pd.DataFrame(trades)
     return bt, trades_df
 
 
@@ -287,7 +367,7 @@ def main():
         with col2:
             end_date = st.date_input("End Date", value=datetime.today())
 
-        strategy = st.selectbox("Strategy", ["Moving Average Crossover", "RSI Strategy"])
+        strategy = st.selectbox("Strategy", ["Buy & Hold", "Dollar Cost Averaging", "Moving Average Crossover", "RSI Strategy"])
 
         params = {}
         if strategy == "Moving Average Crossover":
@@ -296,7 +376,7 @@ def main():
                 params["short"] = st.number_input("Short MA", min_value=1, max_value=250, value=20, step=1)
             with c2:
                 params["long"] = st.number_input("Long MA", min_value=2, max_value=400, value=50, step=1)
-        else:
+        elif strategy == "RSI Strategy":
             c1, c2, c3 = st.columns(3)
             with c1:
                 params["period"] = st.number_input("RSI Period", min_value=2, max_value=50, value=14, step=1)
@@ -304,6 +384,14 @@ def main():
                 params["oversold"] = st.number_input("Oversold", min_value=1, max_value=50, value=30, step=1)
             with c3:
                 params["overbought"] = st.number_input("Overbought", min_value=50, max_value=99, value=70, step=1)
+        elif strategy == "Buy & Hold":
+            st.info("Buy & Hold strategy: Buy at the start and hold until the end. No additional parameters needed.")
+        elif strategy == "Dollar Cost Averaging":
+            c1, c2 = st.columns(2)
+            with c1:
+                params["frequency"] = st.selectbox("Buy Frequency", ["Weekly", "Monthly", "Quarterly"], index=1)
+            with c2:
+                params["amount"] = st.number_input("Dollar Amount per Purchase", min_value=100, max_value=10000, value=1000, step=100)
 
         slippage_bps = st.slider("Slippage/Fees (bps per trade)", min_value=0, max_value=50, value=0)
         run = st.button("Run Strategy", type="primary")
@@ -321,7 +409,7 @@ def main():
                 st.sidebar.info(f"Data source: {data_source} | Rows: {len(df)} | Date range: {df.index[0].date()} to {df.index[-1].date()}")
                 
                 sig_df = compute_signals(df, strategy, params)
-                bt, trades_df = backtest(sig_df, slippage_bps=slippage_bps)
+                bt, trades_df = backtest(sig_df, slippage_bps=slippage_bps, strategy=strategy, params=params)
                 
             except Exception as e:
                 st.error(f"Error during backtesting: {str(e)}")
