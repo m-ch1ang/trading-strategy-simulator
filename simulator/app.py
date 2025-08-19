@@ -376,6 +376,13 @@ def main():
             tshow["date_out"] = pd.to_datetime(tshow["date_out"]).dt.strftime("%Y-%m-%d")
             tshow["pnl"] = tshow["pnl"].map(lambda x: f"${float(x):,.2f}")
             tshow["return_pct"] = tshow["return_pct"].map(lambda x: f"{float(x):.2f}%")
+            # Rename columns for readability
+            tshow = tshow.rename(columns={
+                "date_in": "Entry Date",
+                "date_out": "Exit Date",
+                "pnl": "Profit / Loss",
+                "return_pct": "Return (%)"
+            })
             st.dataframe(tshow, use_container_width=True, hide_index=True)
         else:
             st.info("No completed trades in the period.")
