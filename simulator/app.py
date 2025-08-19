@@ -157,11 +157,17 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         # Calculate position changes
         df["position_change"] = df["signal"].diff().fillna(0)
     elif strategy == "Buy & Hold":
-        # Simple buy and hold: always in position
-        df["signal"] = 1  # Always long
+        amount = float(params.get("amount", 10000))
+        # Calculate shares bought with initial investment
+        initial_price = df["close"].iloc[0]
+        shares_bought = amount / initial_price
+        
+        # Always hold the same number of shares
+        df["signal"] = shares_bought  # Number of shares held
         df["position_change"] = 0  # No position changes after initial buy
         # Set initial buy signal
-        df.iloc[0, df.columns.get_loc("position_change")] = 1  # Initial buy
+        df.iloc[0, df.columns.get_loc("position_change")] = shares_bought  # Initial buy
+        df["bh_amount"] = amount  # Track initial investment amount
     elif strategy == "Dollar Cost Averaging":
         frequency = params.get("frequency", "Monthly")
         amount = float(params.get("amount", 1000))
@@ -202,12 +208,13 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
     return df
 
 
-def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}) -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
     if df.empty:
-        return df, pd.DataFrame(columns=["date_in", "date_out", "pnl", "return_pct"]), {}
+        return df, pd.DataFrame(columns=["date_in", "date_out", "pnl", "return_pct"]), {}, {}
 
     prices = df["close"]
     dca_metrics = {}
+    bh_metrics = {}
     
     # Handle DCA strategy differently
     if strategy == "Dollar Cost Averaging":
@@ -242,6 +249,27 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
         equity = pd.Series(equity_values, index=df.index)
         strategy_ret = equity.pct_change().fillna(0)
         position = df["signal"]  # Use the cumulative shares as position
+    elif strategy == "Buy & Hold":
+        amount = float(params.get("amount", 10000))
+        initial_price = prices.iloc[0]
+        shares_bought = amount / initial_price
+        
+        # Calculate Buy & Hold metrics
+        final_value = shares_bought * prices.iloc[-1]
+        total_gain = final_value - amount
+        
+        bh_metrics = {
+            "total_invested": amount,
+            "total_value": final_value,
+            "total_gain": total_gain,
+            "total_shares": shares_bought
+        }
+        
+        # Calculate returns based on share value
+        position = pd.Series(shares_bought, index=df.index)
+        ret = prices.pct_change().fillna(0)
+        strategy_ret = position * ret / amount  # Normalize by initial investment
+        equity = (1 + strategy_ret).cumprod()
     else:
         # Original logic for other strategies
         position = df["signal"].shift(1).fillna(0)  # trade at next open/close assumption
@@ -314,6 +342,16 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             ret_pct = (px_out / px_in - 1) * 100
             trades.append({"date_in": date, "date_out": df.index[-1], "pnl": pnl, "return_pct": ret_pct})
         trades_df = pd.DataFrame(trades)
+    elif strategy == "Buy & Hold":
+        # For Buy & Hold, show one trade from start to end
+        amount = float(params.get("amount", 10000))
+        px_in = prices.iloc[0]
+        px_out = prices.iloc[-1]
+        shares_bought = amount / px_in
+        pnl = (px_out - px_in) * shares_bought
+        ret_pct = (px_out / px_in - 1) * 100
+        trades = [{"date_in": df.index[0], "date_out": df.index[-1], "pnl": pnl, "return_pct": ret_pct}]
+        trades_df = pd.DataFrame(trades)
     else:
         # Original trade extraction logic for other strategies
         trade_entries = df.index[df["position_change"] > 0.5]
@@ -343,7 +381,7 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             i += 1
 
         trades_df = pd.DataFrame(trades)
-    return bt, trades_df, dca_metrics
+    return bt, trades_df, dca_metrics, bh_metrics
 
 
 def sharpe_ratio(returns: pd.Series, periods_per_year: int = 252) -> float:
@@ -397,7 +435,8 @@ def main():
             with c3:
                 params["overbought"] = st.number_input("Overbought", min_value=50, max_value=99, value=70, step=1)
         elif strategy == "Buy & Hold":
-            st.info("Buy & Hold strategy: Buy at the start and hold until the end. No additional parameters needed.")
+            params["amount"] = st.number_input("Initial Investment Amount", min_value=100, max_value=100000, value=10000, step=100)
+            st.info("Buy & Hold strategy: Buy at the start and hold until the end.")
         elif strategy == "Dollar Cost Averaging":
             c1, c2 = st.columns(2)
             with c1:
@@ -421,7 +460,7 @@ def main():
                 st.sidebar.info(f"Data source: {data_source} | Rows: {len(df)} | Date range: {df.index[0].date()} to {df.index[-1].date()}")
                 
                 sig_df = compute_signals(df, strategy, params)
-                bt, trades_df, dca_metrics = backtest(sig_df, slippage_bps=slippage_bps, strategy=strategy, params=params)
+                bt, trades_df, dca_metrics, bh_metrics = backtest(sig_df, slippage_bps=slippage_bps, strategy=strategy, params=params)
                 
             except Exception as e:
                 st.error(f"Error during backtesting: {str(e)}")
@@ -471,6 +510,17 @@ def main():
                       delta=f"{(dca_metrics['total_gain']/dca_metrics['total_invested']*100):+.2f}%")
             
             st.info(f"Total shares owned: {dca_metrics['total_shares']:.4f}")
+
+        # Buy & Hold specific metrics
+        if strategy == "Buy & Hold" and bh_metrics:
+            st.subheader("Buy & Hold Metrics")
+            bh1, bh2, bh3 = st.columns(3)
+            bh1.metric("Total Invested", f"${bh_metrics['total_invested']:,.2f}")
+            bh2.metric("Total Value", f"${bh_metrics['total_value']:,.2f}")
+            bh3.metric("Total Gain", f"${bh_metrics['total_gain']:,.2f}", 
+                      delta=f"{(bh_metrics['total_gain']/bh_metrics['total_invested']*100):+.2f}%")
+            
+            st.info(f"Total shares owned: {bh_metrics['total_shares']:.4f}")
 
         # Layout charts
         st.subheader(f"{ticker.upper()} Price and Signals")
