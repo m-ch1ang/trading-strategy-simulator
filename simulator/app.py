@@ -202,11 +202,12 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
     return df
 
 
-def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}) -> tuple[pd.DataFrame, pd.DataFrame]:
+def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     if df.empty:
-        return df, pd.DataFrame(columns=["date_in", "date_out", "pnl", "return_pct"]) 
+        return df, pd.DataFrame(columns=["date_in", "date_out", "pnl", "return_pct"]), {}
 
     prices = df["close"]
+    dca_metrics = {}
     
     # Handle DCA strategy differently
     if strategy == "Dollar Cost Averaging":
@@ -226,6 +227,17 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             # Current portfolio value
             current_value = total_shares * row["close"]
             equity_values.append(current_value / total_invested if total_invested > 0 else 1.0)
+        
+        # Calculate DCA-specific metrics
+        final_value = total_shares * prices.iloc[-1]
+        unrealized_gain = final_value - total_invested
+        
+        dca_metrics = {
+            "total_invested": total_invested,
+            "total_value": final_value,
+            "total_gain": unrealized_gain,
+            "total_shares": total_shares
+        }
         
         equity = pd.Series(equity_values, index=df.index)
         strategy_ret = equity.pct_change().fillna(0)
@@ -331,7 +343,7 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             i += 1
 
         trades_df = pd.DataFrame(trades)
-    return bt, trades_df
+    return bt, trades_df, dca_metrics
 
 
 def sharpe_ratio(returns: pd.Series, periods_per_year: int = 252) -> float:
@@ -409,7 +421,7 @@ def main():
                 st.sidebar.info(f"Data source: {data_source} | Rows: {len(df)} | Date range: {df.index[0].date()} to {df.index[-1].date()}")
                 
                 sig_df = compute_signals(df, strategy, params)
-                bt, trades_df = backtest(sig_df, slippage_bps=slippage_bps, strategy=strategy, params=params)
+                bt, trades_df, dca_metrics = backtest(sig_df, slippage_bps=slippage_bps, strategy=strategy, params=params)
                 
             except Exception as e:
                 st.error(f"Error during backtesting: {str(e)}")
@@ -448,6 +460,17 @@ def main():
         c2.metric("Sharpe Ratio", f"{sr:.2f}")
         c3.metric("Max Drawdown", f"{mdd*100:.2f}%")
         c4.metric("Buy & Hold Return", f"{bh_return*100:.2f}%")
+
+        # DCA-specific metrics
+        if strategy == "Dollar Cost Averaging" and dca_metrics:
+            st.subheader("Dollar Cost Averaging Metrics")
+            dc1, dc2, dc3 = st.columns(3)
+            dc1.metric("Total Invested", f"${dca_metrics['total_invested']:,.2f}")
+            dc2.metric("Total Value", f"${dca_metrics['total_value']:,.2f}")
+            dc3.metric("Total Gain", f"${dca_metrics['total_gain']:,.2f}", 
+                      delta=f"{(dca_metrics['total_gain']/dca_metrics['total_invested']*100):+.2f}%")
+            
+            st.info(f"Total shares owned: {dca_metrics['total_shares']:.4f}")
 
         # Layout charts
         st.subheader(f"{ticker.upper()} Price and Signals")
