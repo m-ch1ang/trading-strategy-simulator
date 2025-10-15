@@ -203,13 +203,13 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
                 cumulative_shares += shares_bought
             df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
     elif strategy == "New Car":
-        # APR-based amortized payment schedule invests each payment.
+        # APR-based amortized payment schedule: down payment + N loan payments
         car_price = float(params.get("car_price", 30000))
         dp = float(params.get("down_payment_amount", 0))
         term_months = int(params.get("term_months", 36))
         payment_frequency = params.get("payment_frequency", "Monthly")
         periodic_payment = float(params.get("_computed_periodic_payment", 0))
-        total_payments = int(params.get("_computed_total_payments", max(term_months,1)))
+        num_loan_payments = int(params.get("_computed_num_loan_payments", term_months))
 
         financed = max(car_price - dp, 0)
 
@@ -221,29 +221,26 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         df["position_change"] = 0.0
         df["car_amount"] = 0.0  # track invested dollars each event
 
-        # Find first trading day for down payment
-        if not df.empty:
+        # Invest down payment on first trading day
+        loan_payments_made = 0
+        if not df.empty and dp > 0:
             first_date = df.index[0]
             df.loc[first_date, "position_change"] = 1  # indicator for purchase
             df.loc[first_date, "car_amount"] = dp
 
-        # Schedule periodic payments
+        # Schedule N loan payments (separate from down payment)
         payment_dates = []
-        if not df.empty and periodic_payment > 0:
+        if not df.empty and periodic_payment > 0 and num_loan_payments > 0:
             current_idx = 0
-            payments_added = 0
-            # schedule remaining payments (excluding down payment) up to total_payments-1
-            while payments_added < (total_payments - 1):
+            while loan_payments_made < num_loan_payments:
                 current_idx += step_days
                 if current_idx >= len(df):
                     break
                 payment_date = df.index[current_idx]
                 payment_dates.append(payment_date)
-                payments_added += 1
-
-        for d in payment_dates:
-            df.loc[d, "position_change"] = 1
-            df.loc[d, "car_amount"] = periodic_payment
+                df.loc[payment_date, "position_change"] = 1
+                df.loc[payment_date, "car_amount"] = periodic_payment
+                loan_payments_made += 1
 
         # Build cumulative shares from invested capital
         cumulative_shares = 0.0
@@ -257,12 +254,18 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
             df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
 
         # Store summary info in params pass-through for later metrics (mutate params)
+        # Total expected payments = 1 down payment (if any) + num_loan_payments
+        total_expected = (1 if dp > 0 else 0) + num_loan_payments
+        payments_completed = (1 if dp > 0 else 0) + loan_payments_made
+        
         params["_car_total_invested"] = cumulative_invested
         params["_car_down_payment"] = dp
         params["_car_periodic_payment"] = periodic_payment
-        params["_car_payments_made"] = 1 + len(payment_dates)  # include down payment
-        params["_car_total_payments"] = total_payments
-        params["_car_completed"] = params["_car_payments_made"] >= params["_car_total_payments"]
+        params["_car_loan_payments_made"] = loan_payments_made
+        params["_car_num_loan_payments"] = num_loan_payments
+        params["_car_payments_completed"] = payments_completed
+        params["_car_total_expected"] = total_expected
+        params["_car_completed"] = payments_completed >= total_expected
     else:
         df["signal"] = 0
         df["position_change"] = 0
@@ -352,8 +355,10 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             "total_shares": total_shares,
             "down_payment": params.get("_car_down_payment", 0),
             "periodic_payment": params.get("_car_periodic_payment", 0),
-            "payments_made": params.get("_car_payments_made", 0),
-            "total_payments": params.get("_car_total_payments", 0),
+            "loan_payments_made": params.get("_car_loan_payments_made", 0),
+            "num_loan_payments": params.get("_car_num_loan_payments", 0),
+            "payments_completed": params.get("_car_payments_completed", 0),
+            "total_expected": params.get("_car_total_expected", 0),
             "completed": params.get("_car_completed", False)
         }
         dca_metrics = car_metrics  # reuse dca_metrics dict channel for UI (or we could create new)
@@ -559,23 +564,28 @@ def main():
             apr = float(params["apr"]) / 100.0
             term_months = int(params["term_months"])
             freq = params["payment_frequency"]
+            # Calculate number of loan payments (not including down payment)
             if freq == "Monthly":
-                payments = term_months
+                num_loan_payments = term_months
                 rate_per_period = apr / 12
             elif freq == "Biweekly":
-                payments = int(round(term_months * 52 / 12 / 2))
+                num_loan_payments = int(round(term_months * 26 / 12))  # ~26 biweekly periods per year
                 rate_per_period = apr / 26
-            else:
-                payments = int(round(term_months * 52 / 12))
+            else:  # Weekly
+                num_loan_payments = int(round(term_months * 52 / 12))  # ~52 weeks per year
                 rate_per_period = apr / 52
-            payments = max(payments, 1)
-            if rate_per_period > 0:
-                periodic_payment = financed * (rate_per_period * (1 + rate_per_period) ** payments) / ((1 + rate_per_period) ** payments - 1)
+            num_loan_payments = max(num_loan_payments, 1)
+            
+            # Calculate amortized payment for the financed amount only
+            if rate_per_period > 0 and financed > 0:
+                periodic_payment = financed * (rate_per_period * (1 + rate_per_period) ** num_loan_payments) / ((1 + rate_per_period) ** num_loan_payments - 1)
             else:
-                periodic_payment = financed / payments if payments else 0
+                periodic_payment = financed / num_loan_payments if num_loan_payments > 0 else 0
+            
             params["_computed_periodic_payment"] = periodic_payment
-            params["_computed_total_payments"] = payments
-            st.caption(f"Amortized payment (APR {apr*100:.2f}%): ${periodic_payment:,.2f} for {payments} periods + down payment ${dp:,.0f}.")
+            params["_computed_num_loan_payments"] = num_loan_payments
+            params["_total_to_invest"] = dp + (periodic_payment * num_loan_payments)
+            st.caption(f"Down payment: ${dp:,.0f} + {num_loan_payments} payments of ${periodic_payment:,.2f} (APR {apr*100:.2f}%) = ${dp + (periodic_payment * num_loan_payments):,.0f} total")
 
         slippage_bps = st.slider("Slippage/Fees (bps per trade)", min_value=0, max_value=50, value=0)
         run = st.button("Run Strategy", type="primary")
@@ -650,11 +660,19 @@ def main():
             nc2.metric("Total Value", f"${dca_metrics['total_value']:,.2f}")
             pct = (dca_metrics['total_gain']/dca_metrics['total_invested']*100) if dca_metrics['total_invested']>0 else 0
             nc3.metric("Total Gain", f"${dca_metrics['total_gain']:,.2f}", delta=f"{pct:+.2f}%")
-            prog = f"Payments made: {dca_metrics['payments_made']} / {dca_metrics['total_payments']}"
-            status_text = "Completed" if dca_metrics.get('completed') else "In Progress"
+            
+            # Display payment progress with correct tracking
+            loan_pmts = dca_metrics.get('loan_payments_made', 0)
+            total_loan = dca_metrics.get('num_loan_payments', 0)
+            payments_completed = dca_metrics.get('payments_completed', 0)
+            total_expected = dca_metrics.get('total_expected', 0)
+            status_text = "✓ Completed" if dca_metrics.get('completed') else "In Progress"
+            
             apr_display = params.get('apr', None)
             apr_text = f" | APR: {apr_display:.2f}%" if apr_display is not None else ""
-            st.info(f"{prog} ({status_text}). Down payment: ${dca_metrics['down_payment']:,.2f} | Periodic payment ~ ${dca_metrics['periodic_payment']:,.2f}{apr_text}. Total shares: {dca_metrics['total_shares']:.4f}")
+            
+            st.info(f"**Payment Progress:** {payments_completed}/{total_expected} ({status_text})")
+            st.caption(f"Down payment: ${dca_metrics['down_payment']:,.2f} | Loan payments: {loan_pmts}/{total_loan} @ ${dca_metrics['periodic_payment']:,.2f}{apr_text} | Shares: {dca_metrics['total_shares']:.4f}")
 
         # Buy & Hold specific metrics
         if strategy == "Buy & Hold" and bh_metrics:
