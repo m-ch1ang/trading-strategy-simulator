@@ -10,10 +10,10 @@ from datetime import datetime, timedelta
 # -------------------------
 
 @st.cache_data(show_spinner=False)
-def load_data(ticker: str, start: str, end: str, _version: str = "v3_yahoo_primary") -> tuple[pd.DataFrame, str]:
-    """Load OHLCV data using Yahoo Finance as primary source, Stooq as fallback, and synthetic as last resort.
+def load_data(ticker: str, start: str, end: str, _version: str = "v4_no_synthetic") -> tuple[pd.DataFrame, str]:
+    """Load OHLCV data using Yahoo Finance as primary source and Stooq as fallback.
 
-    Returns (df, source), where source in {"yahoo", "stooq", "synthetic", "none"}.
+    Returns (df, source), where source in {"yahoo", "stooq", "error"}.
     """
     if not ticker:
         return pd.DataFrame(), "none"
@@ -73,47 +73,8 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v3_yahoo_prima
     except Exception:
         pass
 
-    # Synthetic fallback to keep UI functional
-    try:
-        # Create a more robust date range
-        start_date = pd.Timestamp(start_dt).normalize()
-        end_date = pd.Timestamp(end_dt).normalize()
-        
-        # Generate business days between start and end
-        idx = pd.date_range(start_date, end_date, freq="D")
-        idx = idx[idx.dayofweek < 5]  # Remove weekends
-        
-        if len(idx) >= 10:  # Need at least 10 days of data
-            np.random.seed(42)  # Consistent seed for reproducible data
-            n_days = len(idx)
-            
-            # Generate realistic price movement
-            initial_price = 100.0
-            daily_returns = np.random.normal(0.0008, 0.02, n_days)  # ~0.2% daily drift, 2% volatility
-            price_series = initial_price * np.exp(np.cumsum(daily_returns))
-            
-            # Generate OHLC data
-            noise_factor = 0.005
-            df = pd.DataFrame({
-                "open": price_series * (1 + np.random.normal(0, noise_factor, n_days)),
-                "high": price_series * (1 + np.abs(np.random.normal(0, noise_factor, n_days))),
-                "low": price_series * (1 - np.abs(np.random.normal(0, noise_factor, n_days))),
-                "close": price_series,
-                "volume": np.random.randint(50000, 200000, n_days),
-            }, index=idx)
-            
-            # Ensure high >= close >= low and high >= open >= low
-            df["high"] = np.maximum(df["high"], np.maximum(df["open"], df["close"]))
-            df["low"] = np.minimum(df["low"], np.minimum(df["open"], df["close"]))
-            
-            df.index.name = "date"
-            return df, "synthetic"
-    except Exception as e:
-        st.error(f"Synthetic data generation failed: {str(e)}")
-        pass
-
-    # If everything failed, return empty
-    return pd.DataFrame(), "none"
+    # If everything failed, return empty with error
+    return pd.DataFrame(), "error"
 
 
 def calc_rsi(series: pd.Series, period: int = 14) -> pd.Series:
@@ -615,7 +576,13 @@ def main():
                 df, data_source = load_data(ticker.strip().upper(), start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
                 
                 if df.empty:
-                    st.warning(f"No data loaded for {ticker.upper()}. Data source attempted: {data_source}. Check ticker or date range.")
+                    if data_source == "error":
+                        st.error(f"❌ Unable to fetch data for ticker '{ticker.upper()}'")
+                        st.info("🔍 Please verify the ticker symbol is correct. You can search for valid ticker symbols at:")
+                        st.markdown("**[finance.yahoo.com](https://finance.yahoo.com)**")
+                        st.caption("💡 Tip: Make sure you're using the correct ticker format (e.g., AAPL for Apple, MSFT for Microsoft)")
+                    else:
+                        st.warning(f"No data loaded for {ticker.upper()}. Check ticker or date range.")
                     return
                     
                 # Debug info
@@ -630,9 +597,7 @@ def main():
                 return
 
         # Data source banner
-        if data_source == "synthetic":
-            st.info("📊 Using synthetic data because historical data could not be fetched. Charts are for demo only.")
-        elif data_source == "yahoo":
+        if data_source == "yahoo":
             st.success("📈 Using Yahoo Finance historical data")
         elif data_source == "stooq":
             st.success("📈 Using Stooq historical data")

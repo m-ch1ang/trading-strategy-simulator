@@ -35,5 +35,5 @@ streamlit run simulator/app.py
 ## Notes
 - Primary Data source: Yahoo Finance via `yfinance`.
 - Fallback Data source: Stooq via `pandas-datareader`.
-- Last resort: Synthetic data (for demo/testing only). 
+- If ticker is not found, users are directed to verify ticker symbols at finance.yahoo.com
 - This is a teaching/demo tool; not investment advice.
