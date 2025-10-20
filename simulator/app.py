@@ -490,6 +490,37 @@ def main():
     st.title("Trading Strategy Simulator")
     st.caption("DISCLAIMER: Investing in financial markets involves risk. Past performance is not indicative of future results. Investors may experience partial or total loss of capital. This tool is for educational and informational purposes only and does not constitute financial advice. Always conduct your own research or consult a qualified financial advisor before making investment decisions.")
 
+    # Instructions
+    with st.expander("📖 How to Use This App", expanded=False):
+        st.markdown("""
+        ### Getting Started
+        1. **Enter a stock ticker** in the sidebar (e.g., AAPL, MSFT, TSLA)
+        2. **Select date range** for your backtest period
+        3. **Choose a trading strategy** from the dropdown menu
+        4. **Adjust strategy parameters** as needed
+        5. **Click "Run Strategy"** to see the results
+        
+        ### Stock Ticker Guidelines
+        - **US Stocks**: Enter the ticker directly (e.g., `AAPL` for Apple, `GOOGL` for Google, `MSFT` for Microsoft)
+        - **Non-US Stocks**: Add a country code suffix after the ticker:
+          - UK stocks: Add `.L` (e.g., `HSBA.L` for HSBC)
+          - Canadian stocks: Add `.TO` (e.g., `SHOP.TO` for Shopify)
+          - German stocks: Add `.DE` (e.g., `BMW.DE` for BMW)
+          - Australian stocks: Add `.AX` (e.g., `BHP.AX` for BHP)
+          - Chinese stocks: Add `.SS` for Shanghai or `.SZ` for Shenzhen (e.g., `600519.SS` for Kweichow Moutai, `000858.SZ` for Wuliangye)
+          - Hong Kong stocks: Add `.HK` (e.g., `0700.HK` for Tencent, `0005.HK` for HSBC)
+          - Taiwan stocks: Add `.TW` (e.g., `2330.TW` for TSMC)
+          - Singapore stocks: Add `.SI` (e.g., `D05.SI` for DBS Bank, `O39.SI` for OCBC)
+          - Japanese stocks: Add `.T` (e.g., `7203.T` for Toyota, `6758.T` for Sony)
+        - **Not sure?** Check [finance.yahoo.com](https://finance.yahoo.com) to find the correct ticker symbol
+        
+        ### Understanding the Results
+        - **Price Chart**: Shows stock price with buy/sell signals marked
+        - **Equity Curve**: Compares your strategy performance vs. buy & hold
+        - **Metrics**: Total return, Sharpe ratio, max drawdown, and more
+        - **Trades Table**: Detailed list of all trades with entry/exit dates and returns
+        """)
+
     # Sidebar inputs
     with st.sidebar:
         st.header("Parameters")
@@ -581,6 +612,7 @@ def main():
                         st.info("🔍 Please verify the ticker symbol is correct. You can search for valid ticker symbols at:")
                         st.markdown("**[finance.yahoo.com](https://finance.yahoo.com)**")
                         st.caption("💡 Tip: Make sure you're using the correct ticker format (e.g., AAPL for Apple, MSFT for Microsoft)")
+                        st.caption("🐛 If you've verified the ticker is correct and it still doesn't work, please reach out to mike.chiang996@gmail.com to report this issue.")
                     else:
                         st.warning(f"No data loaded for {ticker.upper()}. Check ticker or date range.")
                     return
