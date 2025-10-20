@@ -501,17 +501,18 @@ def main():
         5. **Click "Run Strategy"** to see the results
         
         ### Stock Ticker Guidelines
-        - **US Stocks**: Enter the ticker directly (e.g., `AAPL` for Apple, `GOOGL` for Google, `MSFT` for Microsoft)
+        - **🇺🇸 US Stocks**: Enter the ticker directly (e.g., `AAPL` for Apple, `GOOGL` for Google, `MSFT` for Microsoft)
         - **Non-US Stocks**: Add a country code suffix after the ticker:
-          - UK stocks: Add `.L` (e.g., `HSBA.L` for HSBC)
-          - Canadian stocks: Add `.TO` (e.g., `SHOP.TO` for Shopify)
-          - German stocks: Add `.DE` (e.g., `BMW.DE` for BMW)
-          - Australian stocks: Add `.AX` (e.g., `BHP.AX` for BHP)
-          - Chinese stocks: Add `.SS` for Shanghai or `.SZ` for Shenzhen (e.g., `600519.SS` for Kweichow Moutai, `000858.SZ` for Wuliangye)
-          - Hong Kong stocks: Add `.HK` (e.g., `0700.HK` for Tencent, `0005.HK` for HSBC)
-          - Taiwan stocks: Add `.TW` (e.g., `2330.TW` for TSMC)
-          - Singapore stocks: Add `.SI` (e.g., `D05.SI` for DBS Bank, `O39.SI` for OCBC)
-          - Japanese stocks: Add `.T` (e.g., `7203.T` for Toyota, `6758.T` for Sony)
+          - 🇬🇧 UK stocks: Add `.L` (e.g., `HSBA.L` for HSBC)
+          - 🇨🇦 Canadian stocks: Add `.TO` (e.g., `SHOP.TO` for Shopify)
+          - 🇩🇪 German stocks: Add `.DE` (e.g., `BMW.DE` for BMW)
+          - 🇦🇺 Australian stocks: Add `.AX` (e.g., `BHP.AX` for BHP)
+          - 🇨🇳 Chinese stocks: Add `.SS` for Shanghai or `.SZ` for Shenzhen (e.g., `600519.SS` for Kweichow Moutai, `000858.SZ` for Wuliangye)
+          - 🇭🇰 Hong Kong stocks: Add `.HK` (e.g., `0700.HK` for Tencent, `0005.HK` for HSBC)
+          - 🇹🇼 Taiwan stocks: Add `.TW` (e.g., `2330.TW` for TSMC)
+          - 🇸🇬 Singapore stocks: Add `.SI` (e.g., `D05.SI` for DBS Bank, `O39.SI` for OCBC)
+          - 🇯🇵 Japanese stocks: Add `.T` (e.g., `7203.T` for Toyota, `6758.T` for Sony)
+        - **₿ Cryptocurrencies**: Use the crypto symbol followed by your preferred currency (e.g., `BTC-USD` for Bitcoin, `ETH-USD` for Ethereum, `BTC-EUR` for Bitcoin in Euros)
         - **Not sure?** Check [finance.yahoo.com](https://finance.yahoo.com) to find the correct ticker symbol
         
         ### Understanding the Results
