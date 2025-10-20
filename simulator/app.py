@@ -10,10 +10,10 @@ from datetime import datetime, timedelta
 # -------------------------
 
 @st.cache_data(show_spinner=False)
-def load_data(ticker: str, start: str, end: str, _version: str = "v2_stooq_only") -> tuple[pd.DataFrame, str]:
-    """Load OHLCV data using Stooq as primary source with synthetic fallback.
+def load_data(ticker: str, start: str, end: str, _version: str = "v3_yahoo_primary") -> tuple[pd.DataFrame, str]:
+    """Load OHLCV data using Yahoo Finance as primary source, Stooq as fallback, and synthetic as last resort.
 
-    Returns (df, source), where source in {"stooq", "synthetic", "none"}.
+    Returns (df, source), where source in {"yahoo", "stooq", "synthetic", "none"}.
     """
     if not ticker:
         return pd.DataFrame(), "none"
@@ -30,7 +30,26 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v2_stooq_only"
     if start_dt >= end_dt:
         end_dt = start_dt + pd.Timedelta(days=1)
 
-    # Primary: Stooq via pandas-datareader
+    # Primary: Yahoo Finance via yfinance
+    try:
+        import yfinance as yf
+        yf_ticker = yf.Ticker(ticker.upper())
+        yahoo_df = yf_ticker.history(start=start_dt, end=end_dt)
+        if not yahoo_df.empty and "Close" in yahoo_df.columns:
+            df = yahoo_df.rename(columns={
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
+                "Close": "close", 
+                "Volume": "volume"
+            })
+            df.index = pd.to_datetime(df.index).tz_localize(None)
+            df.index.name = "date"
+            return df, "yahoo"
+    except Exception:
+        pass
+
+    # Fallback: Stooq via pandas-datareader
     try:
         # Stooq uses different ticker formats for some exchanges
         # Try the ticker as-is first, then with common suffixes
@@ -613,6 +632,8 @@ def main():
         # Data source banner
         if data_source == "synthetic":
             st.info("📊 Using synthetic data because historical data could not be fetched. Charts are for demo only.")
+        elif data_source == "yahoo":
+            st.success("📈 Using Yahoo Finance historical data")
         elif data_source == "stooq":
             st.success("📈 Using Stooq historical data")
 
