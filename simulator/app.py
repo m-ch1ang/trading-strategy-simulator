@@ -528,7 +528,7 @@ def main():
         ticker = st.text_input("Stock Ticker", value="AAPL")
         col1, col2 = st.columns(2)
         with col1:
-            start_date = st.date_input("Start Date", value=datetime.today() - timedelta(days=365 * 3))
+            start_date = st.date_input("Start Date", value=datetime.today() - timedelta(days=365 * 3), min_value=datetime(1950, 1, 1))
         with col2:
             end_date = st.date_input("End Date", value=datetime.today(), max_value=datetime.today())
 
@@ -550,20 +550,20 @@ def main():
             with c3:
                 params["overbought"] = st.number_input("Overbought", min_value=50, max_value=99, value=70, step=1)
         elif strategy == "Buy & Hold":
-            params["amount"] = st.number_input("Initial Investment Amount", min_value=100, max_value=100000, value=10000, step=100)
+            params["amount"] = st.number_input("Initial Investment Amount", min_value=100, value=10000, step=100)
             st.info("Buy & Hold strategy: Buy at the start and hold until the end.")
         elif strategy == "Dollar Cost Averaging":
             c1, c2 = st.columns(2)
             with c1:
                 params["frequency"] = st.selectbox("Buy Frequency", ["Weekly", "Monthly", "Quarterly"], index=1)
             with c2:
-                params["amount"] = st.number_input("Dollar Amount per Purchase", min_value=100, max_value=10000, value=1000, step=100)
+                params["amount"] = st.number_input("Dollar Amount per Purchase", min_value=100, value=1000, step=100)
         elif strategy == "New Car":
             st.info("What if I bought this stock instead of a new car? Down payment and amortized loan payments (APR) get invested.")
             c1, c2, c3 = st.columns(3)
             with c1:
-                params["car_price"] = st.number_input("Car Price ($)", min_value=5000, max_value=150000, value=30000, step=500)
-                params["down_payment_amount"] = st.number_input("Down Payment ($)", min_value=0, max_value=200000, value=6000, step=500)
+                params["car_price"] = st.number_input("Car Price ($)", min_value=5000, value=30000, step=500)
+                params["down_payment_amount"] = st.number_input("Down Payment ($)", min_value=0, value=6000, step=500)
             with c2:
                 params["term_months"] = st.selectbox("Term (Months)", [12, 24, 36, 48, 60], index=2)
                 params["payment_frequency"] = st.selectbox("Frequency", ["Monthly", "Biweekly", "Weekly"], index=0)
