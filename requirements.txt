@@ -6,3 +6,5 @@ pandas-datareader
 yfinance
 setuptools
 python-dateutil
+babel
+pyyaml

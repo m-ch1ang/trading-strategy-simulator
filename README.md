@@ -32,6 +32,42 @@ pip install -r requirements.txt
 streamlit run simulator/app.py
 ```
 
+## Internationalization (i18n)
+
+The app supports multiple languages:
+- **English (en)**: Default language
+- **繁體中文 (zh-TW)**: Traditional Chinese
+- **简体中文 (zh-CN)**: Simplified Chinese
+
+### Language Selection
+- Language selector is available in the sidebar
+- Language preference is persisted in `st.session_state` across page reloads
+- Browser locale detection attempts to set the initial language (defaults to English if detection fails)
+
+### Locale Files
+Translation files are stored in `locales/` directory:
+- `locales/en.yml`: English translations
+- `locales/zh-TW.yml`: Traditional Chinese translations
+- `locales/zh-CN.yml`: Simplified Chinese translations
+
+### Number and Currency Formatting
+The app uses Babel for locale-aware formatting:
+- **Currency**: Formatted according to language (USD for English, TWD for zh-TW, CNY for zh-CN)
+- **Numbers**: Formatted with appropriate decimal separators and thousand separators
+- **Percentages**: Formatted according to locale conventions
+
+### Adding New Translations
+1. Add translation keys to all locale YAML files in `locales/`
+2. Use the `i18n.t(key, lang)` function in code: `t("app.title", lang)`
+3. For formatted strings, pass format arguments: `t("errors.fetch_error", lang, ticker="AAPL")`
+
+### i18n Helper Functions
+- `t(key, lang, **kwargs)`: Translate a key with optional format arguments
+- `format_currency_localized(amount, lang)`: Format currency using Babel
+- `format_number_localized(number, lang, decimal_places=2)`: Format numbers using Babel
+- `format_percent_localized(value, lang, decimal_places=2)`: Format percentages using Babel
+- `detect_browser_language()`: Detect browser language (defaults to 'en')
+
 ## Notes
 - Primary Data source: Yahoo Finance via `yfinance`.
 - Fallback Data source: Stooq via `pandas-datareader`.

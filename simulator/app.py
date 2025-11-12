@@ -4,6 +4,10 @@ import numpy as np
 import plotly.graph_objs as go
 from pandas_datareader import data as pdr
 from datetime import datetime, timedelta
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from i18n.i18n import t, set_language, get_lang
 
 # -------------------------
 # Helpers & Backtest Engine
@@ -485,90 +489,112 @@ def max_drawdown(equity: pd.Series) -> float:
 # -------------------------
 
 def main():
-    st.set_page_config(page_title="Trading Strategy Simulator", layout="wide")
+    st.set_page_config(page_title=t("app.title"), layout="wide")
 
-    st.title("Trading Strategy Simulator")
-    st.caption("DISCLAIMER: Investing in financial markets involves risk. Past performance is not indicative of future results. Investors may experience partial or total loss of capital. This tool is for educational and informational purposes only and does not constitute financial advice. Always conduct your own research or consult a qualified financial advisor before making investment decisions.")
+    st.title(t("app.title"))
+    st.caption(t("app.disclaimer"))
 
     # Instructions
-    with st.expander("📖 How to Use This App", expanded=False):
-        st.markdown("""
-        ### Getting Started
-        1. **Enter a stock ticker** in the sidebar (e.g., AAPL, MSFT, TSLA)
-        2. **Select date range** for your backtest period
-        3. **Choose a trading strategy** from the dropdown menu
-        4. **Adjust strategy parameters** as needed
-        5. **Click "Run Strategy"** to see the results
+    with st.expander(t("instructions.title"), expanded=False):
+        st.markdown(f"""
+        ### {t("instructions.getting_started")}
+        1. **{t("instructions.step1")}**
+        2. **{t("instructions.step2")}**
+        3. **{t("instructions.step3")}**
+        4. **{t("instructions.step4")}**
+        5. **{t("instructions.step5")}**
         
-        ### Stock Ticker Guidelines
-        - **🇺🇸 US Stocks**: Enter the ticker directly (e.g., `AAPL` for Apple, `GOOGL` for Google, `MSFT` for Microsoft)
-        - **Non-US Stocks**: Add a country code suffix after the ticker:
-          - 🇬🇧 UK stocks: Add `.L` (e.g., `HSBA.L` for HSBC)
-          - 🇨🇦 Canadian stocks: Add `.TO` (e.g., `SHOP.TO` for Shopify)
-          - 🇩🇪 German stocks: Add `.DE` (e.g., `BMW.DE` for BMW)
-          - 🇦🇺 Australian stocks: Add `.AX` (e.g., `BHP.AX` for BHP)
-          - 🇨🇳 Chinese stocks: Add `.SS` for Shanghai or `.SZ` for Shenzhen (e.g., `600519.SS` for Kweichow Moutai, `000858.SZ` for Wuliangye)
-          - 🇭🇰 Hong Kong stocks: Add `.HK` (e.g., `0700.HK` for Tencent, `0005.HK` for HSBC)
-          - 🇹🇼 Taiwan stocks: Add `.TW` (e.g., `2330.TW` for TSMC)
-          - 🇸🇬 Singapore stocks: Add `.SI` (e.g., `D05.SI` for DBS Bank, `O39.SI` for OCBC)
-          - 🇯🇵 Japanese stocks: Add `.T` (e.g., `7203.T` for Toyota, `6758.T` for Sony)
-        - **₿ Cryptocurrencies**: Use the crypto symbol followed by your preferred currency (e.g., `BTC-USD` for Bitcoin, `ETH-USD` for Ethereum, `BTC-EUR` for Bitcoin in Euros)
-        - **Not sure?** Check [finance.yahoo.com](https://finance.yahoo.com) to find the correct ticker symbol
+        ### {t("instructions.ticker_guidelines")}
+        - **{t("instructions.us_stocks")}**
+        - **{t("instructions.non_us_stocks")}**
+          - {t("instructions.uk_stocks")}
+          - {t("instructions.ca_stocks")}
+          - {t("instructions.de_stocks")}
+          - {t("instructions.au_stocks")}
+          - {t("instructions.cn_stocks")}
+          - {t("instructions.hk_stocks")}
+          - {t("instructions.tw_stocks")}
+          - {t("instructions.sg_stocks")}
+          - {t("instructions.jp_stocks")}
+        - **{t("instructions.crypto")}**
+        - **{t("instructions.not_sure")}**
         
-        ### Understanding the Results
-        - **Price Chart**: Shows stock price with buy/sell signals marked
-        - **Equity Curve**: Compares your strategy performance vs. buy & hold
-        - **Metrics**: Total return, Sharpe ratio, max drawdown, and more
-        - **Trades Table**: Detailed list of all trades with entry/exit dates and returns
+        ### {t("instructions.understanding_results")}
+        - **{t("instructions.price_chart")}**
+        - **{t("instructions.equity_curve")}**
+        - **{t("instructions.metrics")}**
+        - **{t("instructions.trades_table")}**
         """)
 
     # Sidebar inputs
     with st.sidebar:
-        st.header("Parameters")
-        ticker = st.text_input("Stock Ticker", value="AAPL")
+        # Language selector
+        label_to_code = {
+            "English": "en",
+            "繁體中文": "zh-TW",
+            "简体中文": "zh-CN",
+        }
+        code_to_label = {v: k for k, v in label_to_code.items()}
+        
+        current = get_lang()
+        sel = st.selectbox(
+            t("language.label") + " / 語言 / 语言",
+            list(label_to_code.keys()),
+            index=list(label_to_code.values()).index(current) if current in label_to_code.values() else 0
+        )
+        sel_code = label_to_code[sel]
+        if sel_code != current:
+            set_language(sel_code)
+            st.rerun()
+        
+        st.header(t("sidebar.header"))
+        ticker = st.text_input(t("sidebar.ticker_label"), value="AAPL")
         col1, col2 = st.columns(2)
         with col1:
-            start_date = st.date_input("Start Date", value=datetime.today() - timedelta(days=365 * 3), min_value=datetime(1950, 1, 1))
+            start_date = st.date_input(t("sidebar.start_date"), value=datetime.today() - timedelta(days=365 * 3), min_value=datetime(1950, 1, 1))
         with col2:
-            end_date = st.date_input("End Date", value=datetime.today(), max_value=datetime.today())
+            end_date = st.date_input(t("sidebar.end_date"), value=datetime.today(), max_value=datetime.today())
 
-        strategy = st.selectbox("Strategy", ["Dollar Cost Averaging", "Buy & Hold", "Moving Average Crossover", "RSI Strategy", "New Car"])
+        strategy = st.selectbox(
+            t("sidebar.strategy"),
+            [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")]
+        )
 
         params = {}
-        if strategy == "Moving Average Crossover":
+        if strategy == t("strategies.ma_crossover"):
             c1, c2 = st.columns(2)
             with c1:
-                params["short"] = st.number_input("Short MA", min_value=1, max_value=250, value=20, step=1)
+                params["short"] = st.number_input(t("params.short_ma"), min_value=1, max_value=250, value=20, step=1)
             with c2:
-                params["long"] = st.number_input("Long MA", min_value=2, max_value=400, value=50, step=1)
-        elif strategy == "RSI Strategy":
+                params["long"] = st.number_input(t("params.long_ma"), min_value=2, max_value=400, value=50, step=1)
+        elif strategy == t("strategies.rsi"):
             c1, c2, c3 = st.columns(3)
             with c1:
-                params["period"] = st.number_input("RSI Period", min_value=2, max_value=50, value=14, step=1)
+                params["period"] = st.number_input(t("params.rsi_period"), min_value=2, max_value=50, value=14, step=1)
             with c2:
-                params["oversold"] = st.number_input("Oversold", min_value=1, max_value=50, value=30, step=1)
+                params["oversold"] = st.number_input(t("params.oversold"), min_value=1, max_value=50, value=30, step=1)
             with c3:
-                params["overbought"] = st.number_input("Overbought", min_value=50, max_value=99, value=70, step=1)
-        elif strategy == "Buy & Hold":
-            params["amount"] = st.number_input("Initial Investment Amount", min_value=100, value=10000, step=100)
-            st.info("Buy & Hold strategy: Buy at the start and hold until the end.")
-        elif strategy == "Dollar Cost Averaging":
+                params["overbought"] = st.number_input(t("params.overbought"), min_value=50, max_value=99, value=70, step=1)
+        elif strategy == t("strategies.buy_hold"):
+            params["amount"] = st.number_input(t("params.initial_investment"), min_value=100, value=10000, step=100)
+            st.info(t("info.buy_hold_desc"))
+        elif strategy == t("strategies.dca"):
             c1, c2 = st.columns(2)
             with c1:
-                params["frequency"] = st.selectbox("Buy Frequency", ["Weekly", "Monthly", "Quarterly"], index=1)
+                params["frequency"] = st.selectbox(t("params.buy_frequency"), ["Weekly", "Monthly", "Quarterly"], index=1)
             with c2:
-                params["amount"] = st.number_input("Dollar Amount per Purchase", min_value=100, value=1000, step=100)
-        elif strategy == "New Car":
-            st.info("What if I bought this stock instead of a new car? Down payment and amortized loan payments (APR) get invested.")
+                params["amount"] = st.number_input(t("params.dollar_amount"), min_value=100, value=1000, step=100)
+        elif strategy == t("strategies.new_car"):
+            st.info(t("info.new_car_desc"))
             c1, c2, c3 = st.columns(3)
             with c1:
-                params["car_price"] = st.number_input("Car Price ($)", min_value=5000, value=30000, step=500)
-                params["down_payment_amount"] = st.number_input("Down Payment ($)", min_value=0, value=6000, step=500)
+                params["car_price"] = st.number_input(t("params.car_price"), min_value=5000, value=30000, step=500)
+                params["down_payment_amount"] = st.number_input(t("params.down_payment"), min_value=0, value=6000, step=500)
             with c2:
-                params["term_months"] = st.selectbox("Term (Months)", [12, 24, 36, 48, 60], index=2)
-                params["payment_frequency"] = st.selectbox("Frequency", ["Monthly", "Biweekly", "Weekly"], index=0)
+                params["term_months"] = st.selectbox(t("params.term_months"), [12, 24, 36, 48, 60], index=2)
+                params["payment_frequency"] = st.selectbox(t("params.payment_frequency"), ["Monthly", "Biweekly", "Weekly"], index=0)
             with c3:
-                params["apr"] = st.number_input("APR (%)", min_value=0.0, max_value=25.0, value=5.0, step=0.1)
+                params["apr"] = st.number_input(t("params.apr"), min_value=0.0, max_value=25.0, value=5.0, step=0.1)
 
             car_price = float(params["car_price"])
             dp = float(params["down_payment_amount"])
@@ -597,57 +623,67 @@ def main():
             params["_computed_periodic_payment"] = periodic_payment
             params["_computed_num_loan_payments"] = num_loan_payments
             params["_total_to_invest"] = dp + (periodic_payment * num_loan_payments)
-            st.caption(f"Down payment: ${dp:,.0f} + {num_loan_payments} payments of ${periodic_payment:,.2f} (APR {apr*100:.2f}%) = ${dp + (periodic_payment * num_loan_payments):,.0f} total")
+            st.caption(t("info.car_payment_summary", dp=f"{dp:,.0f}", num_payments=num_loan_payments, payment=f"{periodic_payment:,.2f}", apr=f"{apr*100:.2f}", total=f"{dp + (periodic_payment * num_loan_payments):,.0f}"))
 
-        slippage_bps = st.slider("Slippage/Fees (bps per trade)", min_value=0, max_value=50, value=0)
-        run = st.button("Run Strategy", type="primary")
+        slippage_bps = st.slider(t("sidebar.slippage_label"), min_value=0, max_value=50, value=0)
+        run = st.button(t("sidebar.run_button"), type="primary")
 
     if run:
-        with st.spinner("Loading data and running backtest..."):
+        with st.spinner(t("ui.loading")):
             try:
                 df, data_source = load_data(ticker.strip().upper(), start_date.isoformat(), (end_date + timedelta(days=1)).isoformat())
                 
                 if df.empty:
                     if data_source == "error":
-                        st.error(f"❌ Unable to fetch data for ticker '{ticker.upper()}'")
-                        st.info("🔍 Please verify the ticker symbol is correct. You can search for valid ticker symbols at:")
+                        st.error(t("errors.fetch_error", ticker=ticker.upper()))
+                        st.info(t("errors.verify_ticker"))
                         st.markdown("**[finance.yahoo.com](https://finance.yahoo.com)**")
-                        st.caption("💡 Tip: Make sure you're using the correct ticker format (e.g., AAPL for Apple, MSFT for Microsoft)")
-                        st.caption("🐛 If you've verified the ticker is correct and it still doesn't work, please reach out to mike.chiang996@gmail.com to report this issue.")
+                        st.caption(t("errors.tip"))
+                        st.caption(t("errors.report_issue"))
                     else:
-                        st.warning(f"No data loaded for {ticker.upper()}. Check ticker or date range.")
+                        st.warning(t("errors.no_data", ticker=ticker.upper()))
                     return
                     
                 # Debug info
-                st.sidebar.info(f"Data source: {data_source} | Rows: {len(df)} | Date range: {df.index[0].date()} to {df.index[-1].date()}")
+                st.sidebar.info(t("data_source.info", source=data_source, rows=len(df), start=str(df.index[0].date()), end=str(df.index[-1].date())))
                 
-                sig_df = compute_signals(df, strategy, params)
-                bt, trades_df, dca_metrics, bh_metrics = backtest(sig_df, slippage_bps=slippage_bps, strategy=strategy, params=params)
+                # Map translated strategy names back to internal names for compute_signals
+                strategy_map = {
+                    t("strategies.dca"): "Dollar Cost Averaging",
+                    t("strategies.buy_hold"): "Buy & Hold",
+                    t("strategies.ma_crossover"): "Moving Average Crossover",
+                    t("strategies.rsi"): "RSI Strategy",
+                    t("strategies.new_car"): "New Car"
+                }
+                internal_strategy = strategy_map.get(strategy, strategy)
+                
+                sig_df = compute_signals(df, internal_strategy, params)
+                bt, trades_df, dca_metrics, bh_metrics = backtest(sig_df, slippage_bps=slippage_bps, strategy=internal_strategy, params=params)
                 
             except Exception as e:
-                st.error(f"Error during backtesting: {str(e)}")
-                st.error("Please try again or contact support if the issue persists.")
+                st.error(t("errors.backtest_error", error=str(e)))
+                st.error(t("errors.try_again"))
                 return
 
         # Data source banner
         if data_source == "yahoo":
-            st.success("📈 Using Yahoo Finance historical data")
+            st.success(t("data_source.yahoo"))
         elif data_source == "stooq":
-            st.success("📈 Using Stooq historical data")
+            st.success(t("data_source.stooq"))
 
         # Price chart with markers
         price_fig = go.Figure()
-        price_fig.add_trace(go.Scatter(x=bt.index, y=bt["price"], mode="lines", name="Price"))
+        price_fig.add_trace(go.Scatter(x=bt.index, y=bt["price"], mode="lines", name=t("charts.price")))
         buys = sig_df.index[sig_df["position_change"] > 0.5]
         sells = sig_df.index[sig_df["position_change"] < -0.5]
-        price_fig.add_trace(go.Scatter(x=buys, y=sig_df.loc[buys, "close"], mode="markers", name="Buy", marker=dict(color="green", symbol="triangle-up", size=10)))
-        price_fig.add_trace(go.Scatter(x=sells, y=sig_df.loc[sells, "close"], mode="markers", name="Sell", marker=dict(color="red", symbol="triangle-down", size=10)))
+        price_fig.add_trace(go.Scatter(x=buys, y=sig_df.loc[buys, "close"], mode="markers", name=t("charts.buy"), marker=dict(color="green", symbol="triangle-up", size=10)))
+        price_fig.add_trace(go.Scatter(x=sells, y=sig_df.loc[sells, "close"], mode="markers", name=t("charts.sell"), marker=dict(color="red", symbol="triangle-down", size=10)))
         price_fig.update_layout(height=400, margin=dict(l=10, r=10, t=30, b=10))
 
         # Equity curves
         eq_fig = go.Figure()
-        eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["equity"], mode="lines", name="Strategy"))
-        eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name="Buy & Hold"))
+        eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["equity"], mode="lines", name=t("charts.strategy")))
+        eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=t("charts.buy_hold")))
         eq_fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10))
 
         # Metrics - ensure we get scalar values, not Series
@@ -657,62 +693,62 @@ def main():
         mdd = max_drawdown(bt["equity"])  # negative number
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Return", f"{total_return*100:.2f}%")
-        c2.metric("Sharpe Ratio", f"{sr:.2f}")
-        c3.metric("Max Drawdown", f"{mdd*100:.2f}%")
-        c4.metric("Buy & Hold Return", f"{bh_return*100:.2f}%")
+        c1.metric(t("metrics.total_return"), f"{total_return*100:.2f}%")
+        c2.metric(t("metrics.sharpe_ratio"), f"{sr:.2f}")
+        c3.metric(t("metrics.max_drawdown"), f"{mdd*100:.2f}%")
+        c4.metric(t("metrics.buy_hold_return"), f"{bh_return*100:.2f}%")
 
         # DCA-specific metrics
-        if strategy == "Dollar Cost Averaging" and dca_metrics and "down_payment" not in dca_metrics:
-            st.subheader("Dollar Cost Averaging Metrics")
+        if internal_strategy == "Dollar Cost Averaging" and dca_metrics and "down_payment" not in dca_metrics:
+            st.subheader(t("dca_metrics.title"))
             dc1, dc2, dc3 = st.columns(3)
-            dc1.metric("Total Invested", f"${dca_metrics['total_invested']:,.2f}")
-            dc2.metric("Total Value", f"${dca_metrics['total_value']:,.2f}")
-            dc3.metric("Total Gain", f"${dca_metrics['total_gain']:,.2f}", 
+            dc1.metric(t("dca_metrics.total_invested"), f"${dca_metrics['total_invested']:,.2f}")
+            dc2.metric(t("dca_metrics.total_value"), f"${dca_metrics['total_value']:,.2f}")
+            dc3.metric(t("dca_metrics.total_gain"), f"${dca_metrics['total_gain']:,.2f}", 
                       delta=f"{(dca_metrics['total_gain']/dca_metrics['total_invested']*100):+.2f}%")
             
-            st.info(f"Total shares owned: {dca_metrics['total_shares']:.4f}")
-        if strategy == "New Car" and dca_metrics and "down_payment" in dca_metrics:
-            st.subheader("New Car Strategy Metrics")
+            st.info(t("dca_metrics.total_shares", shares=f"{dca_metrics['total_shares']:.4f}"))
+        if internal_strategy == "New Car" and dca_metrics and "down_payment" in dca_metrics:
+            st.subheader(t("new_car_metrics.title"))
             nc1, nc2, nc3 = st.columns(3)
-            nc1.metric("Total Invested", f"${dca_metrics['total_invested']:,.2f}")
-            nc2.metric("Total Value", f"${dca_metrics['total_value']:,.2f}")
+            nc1.metric(t("new_car_metrics.total_invested"), f"${dca_metrics['total_invested']:,.2f}")
+            nc2.metric(t("new_car_metrics.total_value"), f"${dca_metrics['total_value']:,.2f}")
             pct = (dca_metrics['total_gain']/dca_metrics['total_invested']*100) if dca_metrics['total_invested']>0 else 0
-            nc3.metric("Total Gain", f"${dca_metrics['total_gain']:,.2f}", delta=f"{pct:+.2f}%")
+            nc3.metric(t("new_car_metrics.total_gain"), f"${dca_metrics['total_gain']:,.2f}", delta=f"{pct:+.2f}%")
             
             # Display payment progress with correct tracking
             loan_pmts = dca_metrics.get('loan_payments_made', 0)
             total_loan = dca_metrics.get('num_loan_payments', 0)
             payments_completed = dca_metrics.get('payments_completed', 0)
             total_expected = dca_metrics.get('total_expected', 0)
-            status_text = "✓ Completed" if dca_metrics.get('completed') else "In Progress"
+            status_text = t("new_car_metrics.completed") if dca_metrics.get('completed') else t("new_car_metrics.in_progress")
             
             apr_display = params.get('apr', None)
             apr_text = f" | APR: {apr_display:.2f}%" if apr_display is not None else ""
             
-            st.info(f"**Payment Progress:** {payments_completed}/{total_expected} ({status_text})")
-            st.caption(f"Down payment: ${dca_metrics['down_payment']:,.2f} | Loan payments: {loan_pmts}/{total_loan} @ ${dca_metrics['periodic_payment']:,.2f}{apr_text} | Shares: {dca_metrics['total_shares']:.4f}")
+            st.info(t("new_car_metrics.payment_progress", completed=payments_completed, total=total_expected, status=status_text))
+            st.caption(t("new_car_metrics.payment_details", dp=f"{dca_metrics['down_payment']:,.2f}", loan_pmts=loan_pmts, total_loan=total_loan, payment=f"{dca_metrics['periodic_payment']:,.2f}", apr=apr_text, shares=f"{dca_metrics['total_shares']:.4f}"))
 
         # Buy & Hold specific metrics
-        if strategy == "Buy & Hold" and bh_metrics:
-            st.subheader("Buy & Hold Metrics")
+        if internal_strategy == "Buy & Hold" and bh_metrics:
+            st.subheader(t("buy_hold_metrics.title"))
             bh1, bh2, bh3 = st.columns(3)
-            bh1.metric("Total Invested", f"${bh_metrics['total_invested']:,.2f}")
-            bh2.metric("Total Value", f"${bh_metrics['total_value']:,.2f}")
-            bh3.metric("Total Gain", f"${bh_metrics['total_gain']:,.2f}", 
+            bh1.metric(t("buy_hold_metrics.total_invested"), f"${bh_metrics['total_invested']:,.2f}")
+            bh2.metric(t("buy_hold_metrics.total_value"), f"${bh_metrics['total_value']:,.2f}")
+            bh3.metric(t("buy_hold_metrics.total_gain"), f"${bh_metrics['total_gain']:,.2f}", 
                       delta=f"{(bh_metrics['total_gain']/bh_metrics['total_invested']*100):+.2f}%")
             
-            st.info(f"Total shares owned: {bh_metrics['total_shares']:.4f}")
+            st.info(t("buy_hold_metrics.total_shares", shares=f"{bh_metrics['total_shares']:.4f}"))
 
         # Layout charts
-        st.subheader(f"{ticker.upper()} Price and Signals")
+        st.subheader(t("charts.price_title", ticker=ticker.upper()))
         st.plotly_chart(price_fig, use_container_width=True)
 
-        st.subheader("Equity Curve: Strategy vs Buy & Hold")
+        st.subheader(t("charts.equity_title"))
         st.plotly_chart(eq_fig, use_container_width=True)
 
         # Trades table
-        st.subheader("Trades")
+        st.subheader(t("trades.title"))
         if not trades_df.empty:
             tshow = trades_df.copy()
             tshow["date_in"] = pd.to_datetime(tshow["date_in"]).dt.strftime("%Y-%m-%d")
@@ -721,17 +757,17 @@ def main():
             tshow["return_pct"] = tshow["return_pct"].map(lambda x: f"{float(x):.2f}%")
             # Rename columns for readability
             tshow = tshow.rename(columns={
-                "date_in": "Entry Date",
-                "date_out": "Exit Date",
-                "pnl": "Profit / Loss",
-                "return_pct": "Return (%)"
+                "date_in": t("trades.entry_date"),
+                "date_out": t("trades.exit_date"),
+                "pnl": t("trades.pnl"),
+                "return_pct": t("trades.return_pct")
             })
             st.dataframe(tshow, use_container_width=True, hide_index=True)
         else:
-            st.info("No completed trades in the period.")
+            st.info(t("trades.no_trades"))
 
     else:
-        st.info("Set parameters and click 'Run Strategy' in the sidebar.")
+        st.info(t("ui.waiting"))
 
 
 if __name__ == "__main__":

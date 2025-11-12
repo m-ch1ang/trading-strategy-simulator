@@ -1,0 +1,141 @@
+app:
+  title: "Trading Strategy Simulator"
+  disclaimer: "DISCLAIMER: Investing in financial markets involves risk. Past performance is not indicative of future results. Investors may experience partial or total loss of capital. This tool is for educational and informational purposes only and does not constitute financial advice. Always conduct your own research or consult a qualified financial advisor before making investment decisions."
+  
+sidebar:
+  header: "Parameters"
+  ticker_label: "Stock Ticker"
+  start_date: "Start Date"
+  end_date: "End Date"
+  strategy: "Strategy"
+  slippage_label: "Slippage/Fees (bps per trade)"
+  run_button: "Run Strategy"
+  
+strategies:
+  dca: "Dollar Cost Averaging"
+  buy_hold: "Buy & Hold"
+  ma_crossover: "Moving Average Crossover"
+  rsi: "RSI Strategy"
+  new_car: "New Car"
+  
+params:
+  short_ma: "Short MA"
+  long_ma: "Long MA"
+  rsi_period: "RSI Period"
+  oversold: "Oversold"
+  overbought: "Overbought"
+  initial_investment: "Initial Investment Amount"
+  buy_frequency: "Buy Frequency"
+  dollar_amount: "Dollar Amount per Purchase"
+  car_price: "Car Price ($)"
+  down_payment: "Down Payment ($)"
+  term_months: "Term (Months)"
+  payment_frequency: "Frequency"
+  apr: "APR (%)"
+  
+info:
+  buy_hold_desc: "Buy & Hold strategy: Buy at the start and hold until the end."
+  new_car_desc: "What if I bought this stock instead of a new car? Down payment and amortized loan payments (APR) get invested."
+  car_payment_summary: "Down payment: ${dp} + {num_payments} payments of ${payment} (APR {apr}%) = ${total} total"
+  
+instructions:
+  title: "📖 How to Use This App"
+  getting_started: "Getting Started"
+  step1: "Enter a stock ticker in the sidebar (e.g., AAPL, MSFT, TSLA)"
+  step2: "Select date range for your backtest period"
+  step3: "Choose a trading strategy from the dropdown menu"
+  step4: "Adjust strategy parameters as needed"
+  step5: "Click \"Run Strategy\" to see the results"
+  ticker_guidelines: "Stock Ticker Guidelines"
+  us_stocks: "US Stocks: Enter the ticker directly (e.g., `AAPL` for Apple, `GOOGL` for Google, `MSFT` for Microsoft)"
+  non_us_stocks: "Non-US Stocks: Add a country code suffix after the ticker:"
+  uk_stocks: "UK stocks: Add `.L` (e.g., `HSBA.L` for HSBC)"
+  ca_stocks: "Canadian stocks: Add `.TO` (e.g., `SHOP.TO` for Shopify)"
+  de_stocks: "German stocks: Add `.DE` (e.g., `BMW.DE` for BMW)"
+  au_stocks: "Australian stocks: Add `.AX` (e.g., `BHP.AX` for BHP)"
+  cn_stocks: "Chinese stocks: Add `.SS` for Shanghai or `.SZ` for Shenzhen (e.g., `600519.SS` for Kweichow Moutai, `000858.SZ` for Wuliangye)"
+  hk_stocks: "Hong Kong stocks: Add `.HK` (e.g., `0700.HK` for Tencent, `0005.HK` for HSBC)"
+  tw_stocks: "Taiwan stocks: Add `.TW` (e.g., `2330.TW` for TSMC)"
+  sg_stocks: "Singapore stocks: Add `.SI` (e.g., `D05.SI` for DBS Bank, `O39.SI` for OCBC)"
+  jp_stocks: "Japanese stocks: Add `.T` (e.g., `7203.T` for Toyota, `6758.T` for Sony)"
+  crypto: "₿ Cryptocurrencies: Use the crypto symbol followed by your preferred currency (e.g., `BTC-USD` for Bitcoin, `ETH-USD` for Ethereum, `BTC-EUR` for Bitcoin in Euros)"
+  not_sure: "Not sure? Check [finance.yahoo.com](https://finance.yahoo.com) to find the correct ticker symbol"
+  understanding_results: "Understanding the Results"
+  price_chart: "Price Chart: Shows stock price with buy/sell signals marked"
+  equity_curve: "Equity Curve: Compares your strategy performance vs. buy & hold"
+  metrics: "Metrics: Total return, Sharpe ratio, max drawdown, and more"
+  trades_table: "Trades Table: Detailed list of all trades with entry/exit dates and returns"
+  
+errors:
+  fetch_error: "❌ Unable to fetch data for ticker '{ticker}'"
+  verify_ticker: "🔍 Please verify the ticker symbol is correct. You can search for valid ticker symbols at:"
+  tip: "💡 Tip: Make sure you're using the correct ticker format (e.g., AAPL for Apple, MSFT for Microsoft)"
+  report_issue: "🐛 If you've verified the ticker is correct and it still doesn't work, please reach out to mike.chiang996@gmail.com to report this issue."
+  no_data: "No data loaded for {ticker}. Check ticker or date range."
+  backtest_error: "Error during backtesting: {error}"
+  try_again: "Please try again or contact support if the issue persists."
+  
+data_source:
+  yahoo: "📈 Using Yahoo Finance historical data"
+  stooq: "📈 Using Stooq historical data"
+  info: "Data source: {source} | Rows: {rows} | Date range: {start} to {end}"
+  
+charts:
+  price_title: "{ticker} Price and Signals"
+  equity_title: "Equity Curve: Strategy vs Buy & Hold"
+  price: "Price"
+  buy: "Buy"
+  sell: "Sell"
+  strategy: "Strategy"
+  buy_hold: "Buy & Hold"
+  
+metrics:
+  total_return: "Total Return"
+  sharpe_ratio: "Sharpe Ratio"
+  max_drawdown: "Max Drawdown"
+  buy_hold_return: "Buy & Hold Return"
+  
+dca_metrics:
+  title: "Dollar Cost Averaging Metrics"
+  total_invested: "Total Invested"
+  total_value: "Total Value"
+  total_gain: "Total Gain"
+  total_shares: "Total shares owned: {shares}"
+  
+new_car_metrics:
+  title: "New Car Strategy Metrics"
+  total_invested: "Total Invested"
+  total_value: "Total Value"
+  total_gain: "Total Gain"
+  payment_progress: "Payment Progress: {completed}/{total} ({status})"
+  payment_details: "Down payment: ${dp} | Loan payments: {loan_pmts}/{total_loan} @ ${payment}{apr} | Shares: {shares}"
+  completed: "✓ Completed"
+  in_progress: "In Progress"
+  
+buy_hold_metrics:
+  title: "Buy & Hold Metrics"
+  total_invested: "Total Invested"
+  total_value: "Total Value"
+  total_gain: "Total Gain"
+  total_shares: "Total shares owned: {shares}"
+  
+trades:
+  title: "Trades"
+  entry_date: "Entry Date"
+  exit_date: "Exit Date"
+  pnl: "Profit / Loss"
+  return_pct: "Return (%)"
+  no_trades: "No completed trades in the period."
+  
+ui:
+  waiting: "Set parameters and click 'Run Strategy' in the sidebar."
+  loading: "Loading data and running backtest..."
+  
+language:
+  label: "Language"
+  en: "English"
+  zh_tw: "繁體中文"
+  zh_cn: "简体中文"
+
+
+
