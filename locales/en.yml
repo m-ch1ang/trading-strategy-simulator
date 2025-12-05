@@ -83,17 +83,22 @@ data_source:
 charts:
   price_title: "{ticker} Price and Signals"
   equity_title: "Equity Curve: Strategy vs Buy & Hold"
+  equity_title_spy: "Equity Curve: Strategy vs S&P 500"
   price: "Price"
   buy: "Buy"
   sell: "Sell"
   strategy: "Strategy"
   buy_hold: "Buy & Hold"
+  spy_buy_hold: "SPY Buy & Hold"
+  spy_dca: "SPY Dollar Cost Averaging"
   
 metrics:
   total_return: "Total Return"
   sharpe_ratio: "Sharpe Ratio"
   max_drawdown: "Max Drawdown"
   buy_hold_return: "Buy & Hold Return"
+  spy_buy_hold_return: "SPY Buy & Hold Return"
+  spy_dca_return: "SPY Dollar Cost Averaging Return"
   
 dca_metrics:
   title: "Dollar Cost Averaging Metrics"

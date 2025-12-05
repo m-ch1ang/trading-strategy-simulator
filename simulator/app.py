@@ -358,9 +358,73 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
 
         equity = (1 + strategy_ret).cumprod()
 
-    # Buy & hold baseline
+    # Buy & hold baseline or SPY strategy comparison
     ret = prices.pct_change().fillna(0)
     bh_equity = (1 + ret).cumprod()
+    
+    # For Buy & Hold and Dollar Cost Averaging, compare to same strategy on SPY
+    if strategy in ["Buy & Hold", "Dollar Cost Averaging"]:
+        try:
+            # Extract date range from df
+            start_date_str = df.index[0].strftime("%Y-%m-%d")
+            end_date_str = (df.index[-1] + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+            
+            # Load SPY data
+            spy_df, spy_source = load_data("SPY", start_date_str, end_date_str)
+            
+            if not spy_df.empty and "close" in spy_df.columns:
+                # Align dates: use intersection of dates
+                common_dates = df.index.intersection(spy_df.index)
+                
+                if len(common_dates) > 0:
+                    # Filter both dataframes to common dates
+                    spy_df_aligned = spy_df.loc[common_dates].copy()
+                    df_aligned = df.loc[common_dates].copy()
+                    
+                    # Apply the same strategy to SPY
+                    spy_sig_df = compute_signals(spy_df_aligned, strategy, params)
+                    
+                    # Calculate SPY strategy equity using the same logic
+                    spy_prices = spy_sig_df["close"]
+                    
+                    if strategy == "Dollar Cost Averaging":
+                        amount = float(params.get("amount", 1000))
+                        total_invested = 0
+                        total_shares = 0
+                        spy_equity_values = []
+                        
+                        for i, (date, row) in enumerate(spy_sig_df.iterrows()):
+                            if row["position_change"] > 0:  # Purchase day
+                                shares_bought = amount / row["close"]
+                                total_shares += shares_bought
+                                total_invested += amount
+                            
+                            # Current portfolio value
+                            current_value = total_shares * row["close"]
+                            spy_equity_values.append(current_value / total_invested if total_invested > 0 else 1.0)
+                        
+                        spy_equity = pd.Series(spy_equity_values, index=spy_sig_df.index)
+                        
+                        # Reindex to match original df index for comparison
+                        # Forward fill and back fill to handle missing dates
+                        spy_equity_aligned = spy_equity.reindex(df.index).ffill().bfill().fillna(1.0)
+                        bh_equity = spy_equity_aligned
+                        
+                    elif strategy == "Buy & Hold":
+                        amount = float(params.get("amount", 10000))
+                        initial_price = spy_prices.iloc[0]
+                        shares_bought = amount / initial_price
+                        
+                        # Calculate SPY Buy & Hold equity
+                        spy_portfolio_values = shares_bought * spy_prices
+                        spy_equity = spy_portfolio_values / amount  # Normalize to show growth from $1
+                        
+                        # Reindex to match original df index for comparison
+                        spy_equity_aligned = spy_equity.reindex(df.index).ffill().bfill().fillna(1.0)
+                        bh_equity = spy_equity_aligned
+        except Exception:
+            # If SPY loading fails, fall back to original buy & hold comparison
+            pass
 
     # Car depreciation baseline (for New Car strategy)
     car_depreciation_equity = None
@@ -711,9 +775,19 @@ def main():
         # Equity curves
         eq_fig = go.Figure()
         eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["equity"], mode="lines", name=t("charts.strategy")))
-        # Use car depreciation for New Car strategy, buy & hold for others
+        # Use car depreciation for New Car strategy, SPY strategy for Buy & Hold/DCA, buy & hold for others
         if internal_strategy == "New Car" and "car_depreciation_equity" in bt.columns:
             eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["car_depreciation_equity"], mode="lines", name=t("charts.car_depreciation")))
+        elif internal_strategy == "Buy & Hold":
+            spy_bh_label = t("charts.spy_buy_hold")
+            if spy_bh_label == "charts.spy_buy_hold":
+                spy_bh_label = "SPY Buy & Hold"
+            eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=spy_bh_label))
+        elif internal_strategy == "Dollar Cost Averaging":
+            spy_dca_label = t("charts.spy_dca")
+            if spy_dca_label == "charts.spy_dca":
+                spy_dca_label = "SPY Dollar Cost Averaging"
+            eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=spy_dca_label))
         else:
             eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=t("charts.buy_hold")))
         eq_fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10))
@@ -723,10 +797,20 @@ def main():
         sr = sharpe_ratio(bt["strategy_ret"])
         mdd = max_drawdown(bt["equity"])  # negative number
         
-        # Calculate comparison return (car depreciation for New Car, buy & hold for others)
+        # Calculate comparison return (car depreciation for New Car, SPY strategy for Buy & Hold/DCA, buy & hold for others)
         if internal_strategy == "New Car" and "car_depreciation_equity" in bt.columns:
             comparison_return = float(bt["car_depreciation_equity"].iloc[-1]) - 1
             comparison_label = t("metrics.car_depreciation_return")
+        elif internal_strategy == "Buy & Hold":
+            comparison_return = float(bt["bh_equity"].iloc[-1]) - 1
+            comparison_label = t("metrics.spy_buy_hold_return")
+            if comparison_label == "metrics.spy_buy_hold_return":
+                comparison_label = "SPY Buy & Hold Return"
+        elif internal_strategy == "Dollar Cost Averaging":
+            comparison_return = float(bt["bh_equity"].iloc[-1]) - 1
+            comparison_label = t("metrics.spy_dca_return")
+            if comparison_label == "metrics.spy_dca_return":
+                comparison_label = "SPY Dollar Cost Averaging Return"
         else:
             comparison_return = float(bt["bh_equity"].iloc[-1]) - 1
             comparison_label = t("metrics.buy_hold_return")
@@ -783,7 +867,14 @@ def main():
         st.subheader(t("charts.price_title", ticker=ticker.upper()))
         st.plotly_chart(price_fig, use_container_width=True)
 
-        st.subheader(t("charts.equity_title"))
+        # Update equity title based on comparison type; fallback to English literal if translation missing
+        if internal_strategy in ["Buy & Hold", "Dollar Cost Averaging"]:
+            equity_title = t("charts.equity_title_spy")
+            if equity_title == "charts.equity_title_spy":
+                equity_title = "Equity Curve: Strategy vs S&P 500"
+        else:
+            equity_title = t("charts.equity_title")
+        st.subheader(equity_title)
         st.plotly_chart(eq_fig, use_container_width=True)
 
         # Trades table

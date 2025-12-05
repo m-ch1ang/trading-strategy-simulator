@@ -4,15 +4,19 @@ import streamlit as st
 
 _SUPPORTED = ["en", "zh-CN", "zh-TW"]
 
+# Always reload translations from disk so updates appear immediately
 _CACHE = {}
 
 
 def _load(lang):
-    if lang not in _CACHE:
-        path = os.path.join(os.path.dirname(__file__), "locales", f"{lang}.json")
+    path = os.path.join(os.path.dirname(__file__), "locales", f"{lang}.json")
+    try:
         with open(path, "r", encoding="utf-8") as f:
-            _CACHE[lang] = json.load(f)
-    return _CACHE[lang]
+            data = json.load(f)
+    except Exception:
+        data = {}
+    _CACHE[lang] = data
+    return data
 
 
 def get_lang():

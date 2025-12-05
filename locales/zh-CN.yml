@@ -83,17 +83,22 @@ data_source:
 charts:
   price_title: "{ticker} 价格和信号"
   equity_title: "权益曲线：策略 vs 买入持有"
+  equity_title_spy: "权益曲线：策略 vs 标普500"
   price: "价格"
   buy: "买入"
   sell: "卖出"
   strategy: "策略"
   buy_hold: "买入持有"
+  spy_buy_hold: "SPY 买入持有"
+  spy_dca: "SPY 定投策略"
   
 metrics:
   total_return: "总回报"
   sharpe_ratio: "夏普比率"
   max_drawdown: "最大回撤"
   buy_hold_return: "买入持有回报"
+  spy_buy_hold_return: "SPY 买入持有回报"
+  spy_dca_return: "SPY 定投策略回报"
   
 dca_metrics:
   title: "定投策略指标"
