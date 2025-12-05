@@ -88,13 +88,15 @@
     "buy": "Buy",
     "sell": "Sell",
     "strategy": "Strategy",
-    "buy_hold": "Buy & Hold"
+    "buy_hold": "Buy & Hold",
+    "car_depreciation": "Car Depreciation"
   },
   "metrics": {
     "total_return": "Total Return",
     "sharpe_ratio": "Sharpe Ratio",
     "max_drawdown": "Max Drawdown",
-    "buy_hold_return": "Buy & Hold Return"
+    "buy_hold_return": "Buy & Hold Return",
+    "car_depreciation_return": "Car Depreciation Return"
   },
   "dca_metrics": {
     "title": "Dollar Cost Averaging Metrics",

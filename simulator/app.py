@@ -362,6 +362,32 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
     ret = prices.pct_change().fillna(0)
     bh_equity = (1 + ret).cumprod()
 
+    # Car depreciation baseline (for New Car strategy)
+    car_depreciation_equity = None
+    if strategy == "New Car":
+        car_price = float(params.get("car_price", 30000))
+        if car_price > 0:
+            # Calculate years elapsed from start date
+            start_date = df.index[0]
+            years_elapsed = (df.index - start_date).days / 365.25
+            
+            # Standard car depreciation: 20% first year, 15% per year after
+            # Exponential decay model: value(t) = initial_value * (1 - rate)^years
+            car_values = []
+            for years in years_elapsed:
+                if years <= 1.0:
+                    # First year: 20% depreciation
+                    remaining_value = (1.0 - 0.20) ** years
+                else:
+                    # After first year: 20% first year, then 15% per year
+                    remaining_value = (1.0 - 0.20) * ((1.0 - 0.15) ** (years - 1.0))
+                car_values.append(remaining_value)
+            
+            # Normalize to start at 1.0 for fair comparison with strategy equity
+            car_depreciation_equity = pd.Series(car_values, index=df.index)
+        else:
+            car_depreciation_equity = pd.Series(1.0, index=df.index)
+
     # Create DataFrame using a safe, conservative approach
     bt = pd.DataFrame(index=df.index)
     
@@ -403,6 +429,8 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
     bt["strategy_ret"] = safe_column_assign(strategy_ret, "strategy_ret")
     bt["equity"] = safe_column_assign(equity, "equity")
     bt["bh_equity"] = safe_column_assign(bh_equity, "bh_equity")
+    if car_depreciation_equity is not None:
+        bt["car_depreciation_equity"] = safe_column_assign(car_depreciation_equity, "car_depreciation_equity")
 
     # Extract trades from position change signals
     if strategy == "Dollar Cost Averaging":
@@ -683,20 +711,31 @@ def main():
         # Equity curves
         eq_fig = go.Figure()
         eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["equity"], mode="lines", name=t("charts.strategy")))
-        eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=t("charts.buy_hold")))
+        # Use car depreciation for New Car strategy, buy & hold for others
+        if internal_strategy == "New Car" and "car_depreciation_equity" in bt.columns:
+            eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["car_depreciation_equity"], mode="lines", name=t("charts.car_depreciation")))
+        else:
+            eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=t("charts.buy_hold")))
         eq_fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10))
 
         # Metrics - ensure we get scalar values, not Series
         total_return = float(bt["equity"].iloc[-1]) - 1
-        bh_return = float(bt["bh_equity"].iloc[-1]) - 1
         sr = sharpe_ratio(bt["strategy_ret"])
         mdd = max_drawdown(bt["equity"])  # negative number
+        
+        # Calculate comparison return (car depreciation for New Car, buy & hold for others)
+        if internal_strategy == "New Car" and "car_depreciation_equity" in bt.columns:
+            comparison_return = float(bt["car_depreciation_equity"].iloc[-1]) - 1
+            comparison_label = t("metrics.car_depreciation_return")
+        else:
+            comparison_return = float(bt["bh_equity"].iloc[-1]) - 1
+            comparison_label = t("metrics.buy_hold_return")
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(t("metrics.total_return"), f"{total_return*100:.2f}%")
         c2.metric(t("metrics.sharpe_ratio"), f"{sr:.2f}")
         c3.metric(t("metrics.max_drawdown"), f"{mdd*100:.2f}%")
-        c4.metric(t("metrics.buy_hold_return"), f"{bh_return*100:.2f}%")
+        c4.metric(comparison_label, f"{comparison_return*100:.2f}%")
 
         # DCA-specific metrics
         if internal_strategy == "Dollar Cost Averaging" and dca_metrics and "down_payment" not in dca_metrics:

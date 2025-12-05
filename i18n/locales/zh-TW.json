@@ -88,13 +88,15 @@
     "buy": "買入",
     "sell": "賣出",
     "strategy": "策略",
-    "buy_hold": "買入持有"
+    "buy_hold": "買入持有",
+    "car_depreciation": "汽車折舊"
   },
   "metrics": {
     "total_return": "總回報",
     "sharpe_ratio": "夏普比率",
     "max_drawdown": "最大回撤",
-    "buy_hold_return": "買入持有回報"
+    "buy_hold_return": "買入持有回報",
+    "car_depreciation_return": "汽車折舊回報"
   },
   "dca_metrics": {
     "title": "定期定額投資指標",
