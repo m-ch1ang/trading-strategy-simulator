@@ -2,10 +2,63 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
-from pandas_datareader import data as pdr
+import json
 from datetime import datetime, timedelta
 import sys
 import os
+import time
+
+# #region agent log
+def _debug_log(hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    try:
+        with open("/Users/michaelchiang/Desktop/100DEVS/Trading Strategy Sim/.cursor/debug-39ccb2.log", "a", encoding="utf-8") as _f:
+            _f.write(json.dumps({
+                "sessionId": "39ccb2",
+                "runId": "pre-fix",
+                "hypothesisId": hypothesis_id,
+                "location": location,
+                "message": message,
+                "data": data,
+                "timestamp": int(time.time() * 1000),
+            }) + "\n")
+    except Exception:
+        pass
+# #endregion
+
+# #region agent log
+_debug_log(
+    "H1",
+    "simulator/app.py:startup",
+    "Python and pandas environment snapshot",
+    {
+        "python_version": sys.version,
+        "pandas_version": getattr(pd, "__version__", "unknown"),
+    },
+)
+# #endregion
+
+# #region agent log
+try:
+    from pandas_datareader import data as pdr
+    _debug_log(
+        "H1",
+        "simulator/app.py:import_pdr",
+        "pandas_datareader import succeeded",
+        {},
+    )
+except Exception as _import_err:
+    _debug_log(
+        "H1",
+        "simulator/app.py:import_pdr",
+        "pandas_datareader import failed",
+        {
+            "error_type": type(_import_err).__name__,
+            "error_message": str(_import_err),
+        },
+    )
+    raise
+# #endregion
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from i18n.i18n import t, set_language, get_lang
 
