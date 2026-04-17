@@ -2,62 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
-import json
 from datetime import datetime, timedelta
 import sys
 import os
-import time
 
-# #region agent log
-def _debug_log(hypothesis_id: str, location: str, message: str, data: dict) -> None:
-    try:
-        with open("/Users/michaelchiang/Desktop/100DEVS/Trading Strategy Sim/.cursor/debug-39ccb2.log", "a", encoding="utf-8") as _f:
-            _f.write(json.dumps({
-                "sessionId": "39ccb2",
-                "runId": "pre-fix",
-                "hypothesisId": hypothesis_id,
-                "location": location,
-                "message": message,
-                "data": data,
-                "timestamp": int(time.time() * 1000),
-            }) + "\n")
-    except Exception:
-        pass
-# #endregion
-
-# #region agent log
-_debug_log(
-    "H1",
-    "simulator/app.py:startup",
-    "Python and pandas environment snapshot",
-    {
-        "python_version": sys.version,
-        "pandas_version": getattr(pd, "__version__", "unknown"),
-    },
-)
-# #endregion
-
-# #region agent log
 try:
     from pandas_datareader import data as pdr
-    _debug_log(
-        "H1",
-        "simulator/app.py:import_pdr",
-        "pandas_datareader import succeeded",
-        {},
-    )
-except Exception as _import_err:
-    _debug_log(
-        "H1",
-        "simulator/app.py:import_pdr",
-        "pandas_datareader import failed",
-        {
-            "error_type": type(_import_err).__name__,
-            "error_message": str(_import_err),
-        },
-    )
+except Exception:
     pdr = None
-# #endregion
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from i18n.i18n import t, set_language, get_lang
@@ -108,16 +60,8 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v4_no_syntheti
 
     # Fallback: Stooq via pandas-datareader
     try:
-        # #region agent log
         if pdr is None:
-            _debug_log(
-                "H4",
-                "simulator/app.py:load_data_stooq_guard",
-                "Skipping Stooq fallback because pandas_datareader is unavailable",
-                {"ticker": ticker.upper()},
-            )
             return pd.DataFrame(), "error"
-        # #endregion
 
         # Stooq uses different ticker formats for some exchanges
         # Try the ticker as-is first, then with common suffixes
@@ -158,17 +102,6 @@ def calc_rsi(series: pd.Series, period: int = 14) -> pd.Series:
 
 def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFrame:
     df = df.copy()
-    # #region agent log
-    _debug_log(
-        "H8",
-        "simulator/app.py:compute_signals_entry",
-        "compute_signals strategy entry",
-        {
-            "strategy": str(strategy),
-            "rows": int(len(df)),
-        },
-    )
-    # #endregion
     if strategy == "Moving Average Crossover":
         short = int(params.get("short", 20))
         long = int(params.get("long", 50))
@@ -220,49 +153,19 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         # Calculate shares bought with initial investment
         initial_price = df["close"].iloc[0]
         shares_bought = amount / initial_price
-        # #region agent log
-        _debug_log(
-            "H6",
-            "simulator/app.py:compute_signals_buy_hold_pre_assign",
-            "Buy & Hold assignment precheck",
-            {
-                "signal_dtype_before": str(df.get("signal", pd.Series(dtype="float64")).dtype) if "signal" in df.columns else "missing",
-                "position_change_dtype_before": str(df.get("position_change", pd.Series(dtype="float64")).dtype) if "position_change" in df.columns else "missing",
-                "shares_bought": float(shares_bought),
-                "amount": float(amount),
-                "initial_price": float(initial_price),
-            },
-        )
-        # #endregion
         
         # Always hold the same number of shares
         df["signal"] = shares_bought  # Number of shares held
-        df["position_change"] = 0  # No position changes after initial buy
+        df["position_change"] = 0.0  # No position changes after initial buy (float for fractional shares)
         # Set initial buy signal
-        try:
-            df.iloc[0, df.columns.get_loc("position_change")] = shares_bought  # Initial buy
-        except Exception as _bh_assign_err:
-            # #region agent log
-            _debug_log(
-                "H6",
-                "simulator/app.py:compute_signals_buy_hold_assign",
-                "Buy & Hold initial position_change assignment failed",
-                {
-                    "error_type": type(_bh_assign_err).__name__,
-                    "error_message": str(_bh_assign_err),
-                    "position_change_dtype_after_init": str(df["position_change"].dtype),
-                    "shares_bought": float(shares_bought),
-                },
-            )
-            # #endregion
-            raise
+        df.iloc[0, df.columns.get_loc("position_change")] = shares_bought  # Initial buy
         df["bh_amount"] = amount  # Track initial investment amount
     elif strategy == "Dollar Cost Averaging":
         frequency = params.get("frequency", "Monthly")
         amount = float(params.get("amount", 1000))
         
         # Initialize signals
-        df["signal"] = 0
+        df["signal"] = 0.0
         df["position_change"] = 0
         df["dca_amount"] = 0.0  # Track dollar amounts
         
@@ -290,25 +193,7 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
                 # Buy more shares with fixed dollar amount
                 shares_bought = amount / row["close"]
                 cumulative_shares += shares_bought
-            try:
-                df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
-            except Exception as _dca_assign_err:
-                # #region agent log
-                _debug_log(
-                    "H7",
-                    "simulator/app.py:compute_signals_dca_assign",
-                    "DCA signal assignment failed",
-                    {
-                        "error_type": type(_dca_assign_err).__name__,
-                        "error_message": str(_dca_assign_err),
-                        "signal_dtype_before": str(df["signal"].dtype),
-                        "position_change_value": float(row["position_change"]),
-                        "close": float(row["close"]),
-                        "cumulative_shares": float(cumulative_shares),
-                    },
-                )
-                # #endregion
-                raise
+            df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
     elif strategy == "New Car":
         # APR-based amortized payment schedule: down payment + N loan payments
         car_price = float(params.get("car_price", 30000))
