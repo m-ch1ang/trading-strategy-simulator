@@ -1,2 +1,0 @@
-{"sessionId": "39ccb2", "runId": "pre-fix", "hypothesisId": "H1", "location": "simulator/app.py:startup", "message": "Python and pandas environment snapshot", "data": {"python_version": "3.9.6 (default, Apr 30 2025, 02:07:17) \n[Clang 17.0.0 (clang-1700.0.13.5)]", "pandas_version": "2.3.3"}, "timestamp": 1776436667781}
-{"sessionId": "39ccb2", "runId": "pre-fix", "hypothesisId": "H1", "location": "simulator/app.py:import_pdr", "message": "pandas_datareader import succeeded", "data": {}, "timestamp": 1776436667894}

@@ -56,7 +56,7 @@ except Exception as _import_err:
             "error_message": str(_import_err),
         },
     )
-    raise
+    pdr = None
 # #endregion
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -108,6 +108,17 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v4_no_syntheti
 
     # Fallback: Stooq via pandas-datareader
     try:
+        # #region agent log
+        if pdr is None:
+            _debug_log(
+                "H4",
+                "simulator/app.py:load_data_stooq_guard",
+                "Skipping Stooq fallback because pandas_datareader is unavailable",
+                {"ticker": ticker.upper()},
+            )
+            return pd.DataFrame(), "error"
+        # #endregion
+
         # Stooq uses different ticker formats for some exchanges
         # Try the ticker as-is first, then with common suffixes
         tickers_to_try = [ticker.upper()]
