@@ -158,6 +158,17 @@ def calc_rsi(series: pd.Series, period: int = 14) -> pd.Series:
 
 def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFrame:
     df = df.copy()
+    # #region agent log
+    _debug_log(
+        "H8",
+        "simulator/app.py:compute_signals_entry",
+        "compute_signals strategy entry",
+        {
+            "strategy": str(strategy),
+            "rows": int(len(df)),
+        },
+    )
+    # #endregion
     if strategy == "Moving Average Crossover":
         short = int(params.get("short", 20))
         long = int(params.get("long", 50))
@@ -209,12 +220,42 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         # Calculate shares bought with initial investment
         initial_price = df["close"].iloc[0]
         shares_bought = amount / initial_price
+        # #region agent log
+        _debug_log(
+            "H6",
+            "simulator/app.py:compute_signals_buy_hold_pre_assign",
+            "Buy & Hold assignment precheck",
+            {
+                "signal_dtype_before": str(df.get("signal", pd.Series(dtype="float64")).dtype) if "signal" in df.columns else "missing",
+                "position_change_dtype_before": str(df.get("position_change", pd.Series(dtype="float64")).dtype) if "position_change" in df.columns else "missing",
+                "shares_bought": float(shares_bought),
+                "amount": float(amount),
+                "initial_price": float(initial_price),
+            },
+        )
+        # #endregion
         
         # Always hold the same number of shares
         df["signal"] = shares_bought  # Number of shares held
         df["position_change"] = 0  # No position changes after initial buy
         # Set initial buy signal
-        df.iloc[0, df.columns.get_loc("position_change")] = shares_bought  # Initial buy
+        try:
+            df.iloc[0, df.columns.get_loc("position_change")] = shares_bought  # Initial buy
+        except Exception as _bh_assign_err:
+            # #region agent log
+            _debug_log(
+                "H6",
+                "simulator/app.py:compute_signals_buy_hold_assign",
+                "Buy & Hold initial position_change assignment failed",
+                {
+                    "error_type": type(_bh_assign_err).__name__,
+                    "error_message": str(_bh_assign_err),
+                    "position_change_dtype_after_init": str(df["position_change"].dtype),
+                    "shares_bought": float(shares_bought),
+                },
+            )
+            # #endregion
+            raise
         df["bh_amount"] = amount  # Track initial investment amount
     elif strategy == "Dollar Cost Averaging":
         frequency = params.get("frequency", "Monthly")
@@ -249,7 +290,25 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
                 # Buy more shares with fixed dollar amount
                 shares_bought = amount / row["close"]
                 cumulative_shares += shares_bought
-            df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
+            try:
+                df.iloc[i, df.columns.get_loc("signal")] = cumulative_shares
+            except Exception as _dca_assign_err:
+                # #region agent log
+                _debug_log(
+                    "H7",
+                    "simulator/app.py:compute_signals_dca_assign",
+                    "DCA signal assignment failed",
+                    {
+                        "error_type": type(_dca_assign_err).__name__,
+                        "error_message": str(_dca_assign_err),
+                        "signal_dtype_before": str(df["signal"].dtype),
+                        "position_change_value": float(row["position_change"]),
+                        "close": float(row["close"]),
+                        "cumulative_shares": float(cumulative_shares),
+                    },
+                )
+                # #endregion
+                raise
     elif strategy == "New Car":
         # APR-based amortized payment schedule: down payment + N loan payments
         car_price = float(params.get("car_price", 30000))
