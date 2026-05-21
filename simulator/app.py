@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
+import time
 import sys
 import os
 
@@ -19,7 +20,7 @@ from i18n.i18n import t, set_language, get_lang
 # -------------------------
 
 @st.cache_data(show_spinner=False)
-def load_data(ticker: str, start: str, end: str, _version: str = "v4_no_synthetic") -> tuple[pd.DataFrame, str]:
+def load_data(ticker: str, start: str, end: str, _version: str = "v5_yahoo_retry") -> tuple[pd.DataFrame, str]:
     """Load OHLCV data using Yahoo Finance as primary source and Stooq as fallback.
 
     Returns (df, source), where source in {"yahoo", "stooq", "error"}.
@@ -39,17 +40,42 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v4_no_syntheti
     if start_dt >= end_dt:
         end_dt = start_dt + pd.Timedelta(days=1)
 
-    # Primary: Yahoo Finance via yfinance
+    # Primary: Yahoo Finance via yfinance (with retry to handle transient throttling/session issues)
     try:
         import yfinance as yf
-        yf_ticker = yf.Ticker(ticker.upper())
-        yahoo_df = yf_ticker.history(start=start_dt, end=end_dt)
+        retries = 3
+        retry_delay_seconds = 1.0
+        yahoo_df = pd.DataFrame()
+
+        for attempt in range(retries):
+            try:
+                yahoo_df = yf.download(
+                    ticker.upper(),
+                    start=start_dt,
+                    end=end_dt,
+                    auto_adjust=True,
+                    progress=False,
+                    threads=False,
+                )
+
+                # yfinance can return MultiIndex columns for some tickers/configs.
+                if isinstance(yahoo_df.columns, pd.MultiIndex):
+                    yahoo_df.columns = yahoo_df.columns.get_level_values(0)
+
+                if not yahoo_df.empty and "Close" in yahoo_df.columns:
+                    break
+            except Exception:
+                yahoo_df = pd.DataFrame()
+
+            if attempt < retries - 1:
+                time.sleep(retry_delay_seconds)
+
         if not yahoo_df.empty and "Close" in yahoo_df.columns:
             df = yahoo_df.rename(columns={
-                "Open": "open", 
-                "High": "high", 
-                "Low": "low", 
-                "Close": "close", 
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
                 "Volume": "volume"
             })
             df.index = pd.to_datetime(df.index).tz_localize(None)
@@ -144,7 +170,7 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
         df.loc[valid_idx & (df["rsi"] >= overbought), "signal"] = 0  # Sell signal
         
         # Forward fill signals to maintain positions
-        df["signal"] = df["signal"].replace(0, np.nan).fillna(method="ffill").fillna(0)
+        df["signal"] = df["signal"].replace(0, np.nan).ffill().fillna(0)
         
         # Calculate position changes
         df["position_change"] = df["signal"].diff().fillna(0)
@@ -648,7 +674,7 @@ def main():
             st.rerun()
         
         st.header(t("sidebar.header"))
-        ticker = st.text_input(t("sidebar.ticker_label"), value="AAPL")
+        ticker = st.text_input(t("sidebar.ticker_label"), value="MSFT")
         col1, col2 = st.columns(2)
         with col1:
             start_date = st.date_input(t("sidebar.start_date"), value=datetime.today() - timedelta(days=365 * 3), min_value=datetime(1950, 1, 1))
