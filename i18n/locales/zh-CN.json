@@ -104,6 +104,7 @@
     "price_title": "{ticker} 价格和信号",
     "equity_title": "权益曲线：策略 vs 买入持有",
     "equity_title_spy": "权益曲线：策略 vs 标普500",
+    "equity_title_new_car": "投资回报率 vs. 折旧",
     "price": "价格",
     "buy": "买入",
     "sell": "卖出",

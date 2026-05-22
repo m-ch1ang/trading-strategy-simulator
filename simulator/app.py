@@ -565,6 +565,10 @@ def main():
                 equity_title = t("charts.equity_title_spy")
                 if equity_title == "charts.equity_title_spy":
                     equity_title = "Equity Curve: Strategy vs S&P 500"
+            elif internal_strategy == "New Car":
+                equity_title = t("charts.equity_title_new_car")
+                if equity_title == "charts.equity_title_new_car":
+                    equity_title = "ROI vs. Depreciation"
             else:
                 equity_title = t("charts.equity_title")
             st.subheader(equity_title)

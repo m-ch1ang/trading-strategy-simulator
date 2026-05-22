@@ -102,6 +102,7 @@ charts:
   price_title: "{ticker} Price and Signals"
   equity_title: "Equity Curve: Strategy vs Buy & Hold"
   equity_title_spy: "Equity Curve: Strategy vs S&P 500"
+  equity_title_new_car: "ROI vs. Depreciation"
   price: "Price"
   buy: "Buy"
   sell: "Sell"
