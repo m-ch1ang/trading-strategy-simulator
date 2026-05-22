@@ -66,13 +66,15 @@ def main():
     # user actively presses a key while the input is focused.
     st.markdown("""
 <style>
-/* Sidebar: 480px (25% wider than previous 384px override) */
+/* Sidebar: 480px on wide screens; never wider than the viewport */
 [data-testid="stSidebar"][aria-expanded="true"] {
-    width: 480px !important;
-    min-width: 480px !important;
+    width: min(480px, 100vw) !important;
+    min-width: min(480px, 100vw) !important;
+    max-width: 100vw !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] > div:first-child {
-    width: 480px !important;
+    width: min(480px, 100vw) !important;
+    max-width: 100vw !important;
 }
 /* Hide calendar popover that appears on Tab focus; keep visible on user interaction */
 [data-baseweb="popover"][data-placement] {
