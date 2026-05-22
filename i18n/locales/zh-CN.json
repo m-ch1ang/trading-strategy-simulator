@@ -114,7 +114,8 @@
     "car_depreciation": "汽车折旧",
     "portfolio_equity_title": "投资组合权益曲线",
     "per_ticker_equity_title": "各股票权益曲线（基准化至 1.0）",
-    "portfolio_strategy": "投资组合策略"
+    "portfolio_strategy": "投资组合策略",
+    "portfolio_buy_hold": "投资组合买入持有"
   },
   "metrics": {
     "total_return": "总回报",

@@ -614,7 +614,13 @@ def main():
             c1.metric(t("metrics.portfolio_total_return"), f"{port_total_return*100:.2f}%")
             c2.metric(t("metrics.sharpe_ratio"), f"{port_sr:.2f}")
             c3.metric(t("metrics.max_drawdown"), f"{port_mdd*100:.2f}%")
-            c4.metric("SPY " + t("metrics.buy_hold_return"), f"{spy_return*100:.2f}%")
+            if internal_strategy == "Dollar Cost Averaging":
+                _spy_metric_label = t("metrics.spy_dca_return")
+                if _spy_metric_label == "metrics.spy_dca_return":
+                    _spy_metric_label = "SPY Dollar Cost Averaging Return"
+            else:
+                _spy_metric_label = "SPY " + t("metrics.buy_hold_return")
+            c4.metric(_spy_metric_label, f"{spy_return*100:.2f}%")
 
             # ---- PORTFOLIO DOLLAR METRICS (3-column) ----
             if internal_strategy == "Dollar Cost Averaging":
@@ -651,12 +657,27 @@ def main():
                 mode="lines",
                 name=t("charts.portfolio_strategy"),
             ))
+            if internal_strategy == "Dollar Cost Averaging":
+                _port_bh_label = t("charts.spy_dca")
+                if _port_bh_label == "charts.spy_dca":
+                    _port_bh_label = "SPY Dollar Cost Averaging"
+            else:
+                _port_bh_label = t("charts.spy_buy_hold")
+                if _port_bh_label == "charts.spy_buy_hold":
+                    _port_bh_label = "SPY Buy & Hold"
             port_eq_fig.add_trace(go.Scatter(
                 x=portfolio_result.common_dates,
                 y=portfolio_result.bh_equity,
                 mode="lines",
-                name=t("charts.spy_buy_hold"),
+                name=_port_bh_label,
             ))
+            if internal_strategy in ["Moving Average Crossover", "RSI Strategy"]:
+                port_eq_fig.add_trace(go.Scatter(
+                    x=portfolio_result.common_dates,
+                    y=portfolio_result.portfolio_bh_equity,
+                    mode="lines",
+                    name=t("charts.portfolio_buy_hold"),
+                ))
             port_eq_fig.update_layout(height=350, margin=dict(l=10, r=10, t=30, b=10))
             st.plotly_chart(port_eq_fig, use_container_width=True)
 

@@ -114,7 +114,8 @@
     "car_depreciation": "汽車折舊",
     "portfolio_equity_title": "投資組合權益曲線",
     "per_ticker_equity_title": "各股票權益曲線（基準化至 1.0）",
-    "portfolio_strategy": "投資組合策略"
+    "portfolio_strategy": "投資組合策略",
+    "portfolio_buy_hold": "投資組合買入持有"
   },
   "metrics": {
     "total_return": "總回報",

@@ -114,7 +114,8 @@
     "car_depreciation": "Car Depreciation",
     "portfolio_equity_title": "Portfolio Equity Curve",
     "per_ticker_equity_title": "Per-Ticker Equity Curves (Normalized to 1.0)",
-    "portfolio_strategy": "Portfolio Strategy"
+    "portfolio_strategy": "Portfolio Strategy",
+    "portfolio_buy_hold": "Portfolio Buy & Hold"
   },
   "metrics": {
     "total_return": "Total Return",

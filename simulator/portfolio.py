@@ -127,20 +127,50 @@ def run_portfolio_backtest(
 
     portfolio_df = aggregate_portfolio_equity(ticker_results, weights_normalized, common_dates)
 
-    # SPY price-return benchmark
+    # SPY benchmark — DCA strategy uses SPY DCA equity; all others use price-return
     bh_equity = pd.Series(1.0, index=common_dates)
     try:
         spy_start = common_dates[0].strftime("%Y-%m-%d")
         spy_end = (common_dates[-1] + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
         spy_df, _ = load_data("SPY", spy_start, spy_end)
         if not spy_df.empty and "close" in spy_df.columns:
-            spy_prices = spy_df["close"].reindex(common_dates).ffill().bfill()
-            spy_ret = spy_prices.pct_change().fillna(0.0)
-            bh_equity = (1 + spy_ret).cumprod()
+            if strategy == "Dollar Cost Averaging":
+                # Compute SPY DCA equity with the same frequency and total periodic amount
+                spy_aligned = spy_df[spy_df.index.isin(common_dates)].copy()
+                if spy_aligned.empty:
+                    spy_aligned = spy_df.reindex(common_dates).ffill().bfill()
+                spy_sig_df = compute_signals(spy_aligned, strategy, params)
+                spy_amount = float(params.get("amount", 1000))
+                spy_total_invested = 0.0
+                spy_total_shares = 0.0
+                spy_equity_values = []
+                for date in spy_sig_df.index:
+                    row = spy_sig_df.loc[date]
+                    if row["position_change"] > 0:
+                        shares_bought = spy_amount / row["close"]
+                        spy_total_shares += shares_bought
+                        spy_total_invested += spy_amount
+                    current_value = spy_total_shares * row["close"]
+                    spy_equity_values.append(
+                        current_value / spy_total_invested if spy_total_invested > 0 else 1.0
+                    )
+                spy_equity = pd.Series(spy_equity_values, index=spy_sig_df.index)
+                bh_equity = spy_equity.reindex(common_dates).ffill().bfill().fillna(1.0)
+            else:
+                spy_prices = spy_df["close"].reindex(common_dates).ffill().bfill()
+                spy_ret = spy_prices.pct_change().fillna(0.0)
+                bh_equity = (1 + spy_ret).cumprod()
     except Exception:
         pass
 
     portfolio_df["bh_equity"] = bh_equity
+
+    # Weighted buy & hold of portfolio tickers (each ticker's price-return equity, weighted)
+    portfolio_bh_equity = pd.Series(0.0, index=common_dates)
+    for tk, result in ticker_results.items():
+        w = weights_normalized[tk]
+        ticker_bh = result["bt"]["bh_equity"].reindex(common_dates).ffill().bfill().fillna(1.0)
+        portfolio_bh_equity = portfolio_bh_equity + w * ticker_bh
 
     # For DCA, derive total_capital from the actual amounts invested across all tickers.
     if strategy == "Dollar Cost Averaging":
@@ -154,6 +184,7 @@ def run_portfolio_backtest(
         portfolio_equity=portfolio_df["portfolio_equity"],
         portfolio_ret=portfolio_df["portfolio_ret"],
         bh_equity=bh_equity,
+        portfolio_bh_equity=portfolio_bh_equity,
         ticker_results=ticker_results,
         weights_normalized=weights_normalized,
         common_dates=common_dates,
