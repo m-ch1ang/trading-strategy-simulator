@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as st_components
 import pandas as pd
 import importlib
 import sys
@@ -57,6 +58,30 @@ go = resolve_plotly_module()
 
 def main():
     st.set_page_config(page_title=t("app.title"), layout="wide")
+
+    # Mobile only: expand the sidebar on first page load. Uses sessionStorage so
+    # this does not re-expand after the user clicks "Run Strategy" (which causes a
+    # Streamlit rerun). Desktop viewports (≥768 px) are ignored entirely.
+    st_components.html("""
+<script>
+(function () {
+    var ss = window.parent.sessionStorage;
+    if (ss.getItem('_sidebar_mobile_init')) return;
+    function tryExpand() {
+        if (window.parent.innerWidth >= 768) return;
+        var doc = window.parent.document;
+        var sidebar = doc.querySelector('[data-testid="stSidebar"]');
+        if (!sidebar) { setTimeout(tryExpand, 150); return; }
+        ss.setItem('_sidebar_mobile_init', '1');
+        if (sidebar.getAttribute('aria-expanded') !== 'true') {
+            var btn = doc.querySelector('[data-testid="stSidebarCollapsedControl"]');
+            if (btn) btn.click();
+        }
+    }
+    setTimeout(tryExpand, 300);
+})();
+</script>
+""", height=0)
 
     # Bug #5 (partial mitigation): Streamlit's base-web DatePicker opens its calendar
     # popup on any focus event, including Tab navigation. The `openOnFocus` prop is not
@@ -351,6 +376,20 @@ def main():
     # RUN BLOCK                                                            #
     # ------------------------------------------------------------------ #
     if run:
+        # Mobile only: collapse the sidebar so results are immediately visible.
+        st_components.html("""
+<script>
+(function () {
+    if (window.parent.innerWidth >= 768) return;
+    var doc = window.parent.document;
+    setTimeout(function () {
+        var btn = doc.querySelector('[data-testid="stSidebarCollapseButton"]');
+        if (btn) btn.click();
+    }, 150);
+})();
+</script>
+""", height=0)
+
         start_str = start_date.isoformat()
         end_str = (end_date + timedelta(days=1)).isoformat()
 
