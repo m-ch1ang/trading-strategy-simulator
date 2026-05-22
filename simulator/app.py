@@ -436,8 +436,16 @@ def main():
             price_fig.update_layout(height=400, margin=dict(l=10, r=10, t=30, b=10))
 
             # Equity curves
+            _COLOR_STRATEGY = "#6BAED6"  # light blue
+            _COLOR_SPY      = "#08519C"  # dark blue
+            _COLOR_BH       = "#E879A0"  # pink
+
             eq_fig = go.Figure()
-            eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["equity"], mode="lines", name=t("charts.strategy")))
+            eq_fig.add_trace(go.Scatter(
+                x=bt.index, y=bt["equity"], mode="lines",
+                name=t("charts.strategy"),
+                line=dict(color=_COLOR_STRATEGY),
+            ))
             if internal_strategy == "New Car" and "car_depreciation_equity" in bt.columns:
                 eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["car_depreciation_equity"], mode="lines", name=t("charts.car_depreciation")))
             elif internal_strategy == "Buy & Hold":
@@ -450,6 +458,30 @@ def main():
                 if spy_dca_label == "charts.spy_dca":
                     spy_dca_label = "SPY Dollar Cost Averaging"
                 eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=spy_dca_label))
+            elif internal_strategy in ["Moving Average Crossover", "RSI Strategy"]:
+                # Show both SPY Buy & Hold (dark blue) and ticker Buy & Hold (pink)
+                spy_bh_series = None
+                try:
+                    _spy_start = bt.index[0].strftime("%Y-%m-%d")
+                    _spy_end   = (bt.index[-1] + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+                    _spy_df, _ = load_data("SPY", _spy_start, _spy_end)
+                    if not _spy_df.empty and "close" in _spy_df.columns:
+                        _spy_prices = _spy_df["close"].reindex(bt.index).ffill().bfill()
+                        _spy_ret    = _spy_prices.pct_change().fillna(0.0)
+                        spy_bh_series = (1 + _spy_ret).cumprod()
+                except Exception:
+                    pass
+                if spy_bh_series is not None:
+                    eq_fig.add_trace(go.Scatter(
+                        x=bt.index, y=spy_bh_series, mode="lines",
+                        name=t("charts.spy_buy_hold"),
+                        line=dict(color=_COLOR_SPY),
+                    ))
+                eq_fig.add_trace(go.Scatter(
+                    x=bt.index, y=bt["bh_equity"], mode="lines",
+                    name=t("charts.buy_hold"),
+                    line=dict(color=_COLOR_BH),
+                ))
             else:
                 eq_fig.add_trace(go.Scatter(x=bt.index, y=bt["bh_equity"], mode="lines", name=t("charts.buy_hold")))
             eq_fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10))
@@ -526,6 +558,10 @@ def main():
             st.plotly_chart(price_fig, use_container_width=True)
 
             if internal_strategy in ["Buy & Hold", "Dollar Cost Averaging"]:
+                equity_title = t("charts.equity_title_spy")
+                if equity_title == "charts.equity_title_spy":
+                    equity_title = "Equity Curve: Strategy vs S&P 500"
+            elif internal_strategy in ["Moving Average Crossover", "RSI Strategy"]:
                 equity_title = t("charts.equity_title_spy")
                 if equity_title == "charts.equity_title_spy":
                     equity_title = "Equity Curve: Strategy vs S&P 500"
@@ -649,6 +685,10 @@ def main():
             dm3.metric(t("dca_metrics.total_gain"), f"${port_total_gain:,.2f}", delta=f"{gain_pct:+.2f}%")
 
             # ---- PORTFOLIO EQUITY CURVE ----
+            _COLOR_STRATEGY = "#6BAED6"  # light blue
+            _COLOR_SPY      = "#08519C"  # dark blue
+            _COLOR_BH       = "#E879A0"  # pink
+
             st.subheader(t("charts.portfolio_equity_title"))
             port_eq_fig = go.Figure()
             port_eq_fig.add_trace(go.Scatter(
@@ -656,6 +696,7 @@ def main():
                 y=portfolio_result.portfolio_equity,
                 mode="lines",
                 name=t("charts.portfolio_strategy"),
+                line=dict(color=_COLOR_STRATEGY),
             ))
             if internal_strategy == "Dollar Cost Averaging":
                 _port_bh_label = t("charts.spy_dca")
@@ -670,6 +711,7 @@ def main():
                 y=portfolio_result.bh_equity,
                 mode="lines",
                 name=_port_bh_label,
+                line=dict(color=_COLOR_SPY),
             ))
             if internal_strategy in ["Moving Average Crossover", "RSI Strategy"]:
                 port_eq_fig.add_trace(go.Scatter(
@@ -677,6 +719,7 @@ def main():
                     y=portfolio_result.portfolio_bh_equity,
                     mode="lines",
                     name=t("charts.portfolio_buy_hold"),
+                    line=dict(color=_COLOR_BH),
                 ))
             port_eq_fig.update_layout(height=350, margin=dict(l=10, r=10, t=30, b=10))
             st.plotly_chart(port_eq_fig, use_container_width=True)
