@@ -69,6 +69,27 @@ class PortfolioResult:
 # Helpers & Backtest Engine
 # -------------------------
 
+def calculate_equal_weights(tickers: list, precision: int = 2) -> dict:
+    """Return equal weights for tickers that sum to exactly 100.00.
+
+    Uses integer-unit math to avoid floating-point drift.
+    Remainder units are distributed to the last tickers so the first ticker
+    is never systematically favored.
+    """
+    n = len(tickers)
+    if n == 0:
+        return {}
+    total_units = 100 * (10 ** precision)  # 10000 for precision=2
+    base_units = total_units // n
+    remainder_units = total_units - base_units * n
+    units = {tk: base_units for tk in tickers}
+    # Distribute remainder to last tickers to avoid biasing the first
+    for i in range(remainder_units):
+        tk = tickers[n - 1 - (i % n)]
+        units[tk] += 1
+    factor = float(10 ** precision)
+    return {tk: units[tk] / factor for tk in tickers}
+
 @st.cache_data(show_spinner=False)
 def load_data(ticker: str, start: str, end: str, _version: str = "v5_yahoo_retry") -> tuple[pd.DataFrame, str]:
     """Load OHLCV data using Yahoo Finance as primary source and Stooq as fallback.
@@ -381,7 +402,7 @@ def compute_signals(df: pd.DataFrame, strategy: str, params: dict) -> pd.DataFra
     return df
 
 
-def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}) -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
+def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", params: dict = {}, allocation: float = None) -> tuple[pd.DataFrame, pd.DataFrame, dict, dict]:
     if df.empty:
         return df, pd.DataFrame(columns=["date_in", "date_out", "pnl", "return_pct"]), {}, {}
 
@@ -392,6 +413,7 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
     # Handle DCA strategy differently
     if strategy == "Dollar Cost Averaging":
         amount = float(params.get("amount", 1000))
+        fee_rate = slippage_bps / 10000.0
 
         # Calculate returns based on actual dollar investments
         total_invested = 0
@@ -400,9 +422,10 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
 
         for i, (date, row) in enumerate(df.iterrows()):
             if row["position_change"] > 0:  # Purchase day
-                shares_bought = amount / row["close"]
+                effective_amount = amount * (1.0 - fee_rate)
+                shares_bought = effective_amount / row["close"]
                 total_shares += shares_bought
-                total_invested += amount
+                total_invested += amount  # track nominal amount paid
 
             # Current portfolio value
             current_value = total_shares * row["close"]
@@ -425,7 +448,9 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
     elif strategy == "Buy & Hold":
         amount = float(params.get("amount", 10000))
         initial_price = prices.iloc[0]
-        shares_bought = amount / initial_price
+        fee_rate = slippage_bps / 10000.0
+        effective_amount = amount * (1.0 - fee_rate)
+        shares_bought = effective_amount / initial_price
 
         # Calculate Buy & Hold metrics
         final_value = shares_bought * prices.iloc[-1]
@@ -440,7 +465,7 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
 
         # Calculate returns based on actual dollar performance
         portfolio_values = shares_bought * prices
-        equity = portfolio_values / amount  # Normalize to show growth from $1
+        equity = portfolio_values / amount  # Normalize vs nominal invested
         strategy_ret = equity.pct_change().fillna(0)
         position = pd.Series(shares_bought, index=df.index)
     elif strategy == "New Car":
@@ -514,13 +539,15 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
 
                     if strategy == "Dollar Cost Averaging":
                         amount = float(params.get("amount", 1000))
+                        spy_fee_rate = slippage_bps / 10000.0
                         total_invested = 0
                         total_shares = 0
                         spy_equity_values = []
 
                         for i, (date, row) in enumerate(spy_sig_df.iterrows()):
                             if row["position_change"] > 0:  # Purchase day
-                                shares_bought = amount / row["close"]
+                                effective_amount = amount * (1.0 - spy_fee_rate)
+                                shares_bought = effective_amount / row["close"]
                                 total_shares += shares_bought
                                 total_invested += amount
 
@@ -537,12 +564,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
 
                     elif strategy == "Buy & Hold":
                         amount = float(params.get("amount", 10000))
+                        spy_fee_rate = slippage_bps / 10000.0
                         initial_price = spy_prices.iloc[0]
-                        shares_bought = amount / initial_price
+                        spy_effective = amount * (1.0 - spy_fee_rate)
+                        shares_bought = spy_effective / initial_price
 
                         # Calculate SPY Buy & Hold equity
                         spy_portfolio_values = shares_bought * spy_prices
-                        spy_equity = spy_portfolio_values / amount  # Normalize to show growth from $1
+                        spy_equity = spy_portfolio_values / amount  # Normalize vs nominal invested
 
                         # Reindex to match original df index for comparison
                         spy_equity_aligned = spy_equity.reindex(df.index).ffill().bfill().fillna(1.0)
@@ -625,10 +654,12 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
     if strategy == "Dollar Cost Averaging":
         # For DCA, each purchase is a separate "trade"
         amount = float(params.get("amount", 1000))
+        fee_rate = slippage_bps / 10000.0
         trades = []
         for date in df.index[df["position_change"] > 0.5]:
             px_in = prices.loc[date]
-            shares_bought = amount / px_in
+            effective_amount = amount * (1.0 - fee_rate)
+            shares_bought = effective_amount / px_in
             # For DCA, we show each purchase as a trade from purchase to end
             px_out = prices.iloc[-1]  # Final price
             pnl = (px_out - px_in) * shares_bought
@@ -637,7 +668,7 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
                 "date_in": date,
                 "date_out": df.index[-1],
                 "cost_per_share": px_in,
-                "total_cost": shares_bought * px_in,
+                "total_cost": effective_amount,
                 "pnl": pnl,
                 "return_pct": ret_pct,
             })
@@ -645,16 +676,18 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
     elif strategy == "Buy & Hold":
         # For Buy & Hold, show one trade from start to end
         amount = float(params.get("amount", 10000))
+        fee_rate = slippage_bps / 10000.0
         px_in = prices.iloc[0]
         px_out = prices.iloc[-1]
-        shares_bought = amount / px_in
+        effective_amount = amount * (1.0 - fee_rate)
+        shares_bought = effective_amount / px_in
         pnl = (px_out - px_in) * shares_bought
         ret_pct = (px_out / px_in - 1) * 100
         trades = [{
             "date_in": df.index[0],
             "date_out": df.index[-1],
             "cost_per_share": px_in,
-            "total_cost": shares_bought * px_in,
+            "total_cost": effective_amount,
             "pnl": pnl,
             "return_pct": ret_pct,
         }]
@@ -678,7 +711,7 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             })
         trades_df = pd.DataFrame(trades)
     else:
-        # Original trade extraction logic for other strategies
+        # Original trade extraction logic for other strategies (RSI, Moving Average Crossover)
         trade_entries = df.index[df["position_change"] > 0.5]
         trade_exits = df.index[df["position_change"] < -0.5]
 
@@ -700,14 +733,23 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
                 exit_date = df.index[-1]
             px_in = prices.loc[entry_date]
             px_out = prices.loc[exit_date]
-            pnl = px_out - px_in
             ret_pct = (px_out / px_in - 1) * 100
+
+            # Scale P/L to actual portfolio dollars when allocation is provided
+            if allocation is not None and allocation > 0 and px_in > 0:
+                shares_equiv = allocation / px_in
+                dollar_pnl = shares_equiv * (px_out - px_in)
+                total_cost_val = allocation
+            else:
+                dollar_pnl = px_out - px_in
+                total_cost_val = px_in
+
             trades.append({
                 "date_in": entry_date,
                 "date_out": exit_date,
                 "cost_per_share": px_in,
-                "total_cost": px_in,
-                "pnl": pnl,
+                "total_cost": total_cost_val,
+                "pnl": dollar_pnl,
                 "return_pct": ret_pct,
             })
             i += 1
@@ -814,8 +856,10 @@ def run_portfolio_backtest(
                 params, weights_pct[tk] / 100.0, total_capital, strategy
             )
             sig_df = compute_signals(df, strategy, ticker_params)
+            ticker_allocation = total_capital * weights_pct[tk] / 100.0
             bt, trades_df, dca_metrics, bh_metrics = backtest(
-                sig_df, slippage_bps=slippage_bps, strategy=strategy, params=ticker_params
+                sig_df, slippage_bps=slippage_bps, strategy=strategy, params=ticker_params,
+                allocation=ticker_allocation,
             )
             ticker_results[tk] = {
                 "bt": bt,
@@ -887,6 +931,27 @@ def run_portfolio_backtest(
 def main():
     st.set_page_config(page_title=t("app.title"), layout="wide")
 
+    # Bug #5 (partial mitigation): Streamlit's base-web DatePicker opens its calendar
+    # popup on any focus event, including Tab navigation. The `openOnFocus` prop is not
+    # exposed by Streamlit's Python API, so a full fix requires a custom component or a
+    # Streamlit framework update. The CSS below suppresses the auto-open visual artifact
+    # for non-click focus events in supporting browsers by hiding the popover until the
+    # user actively presses a key while the input is focused.
+    st.markdown("""
+<style>
+/* Hide calendar popover that appears on Tab focus; keep visible on user interaction */
+[data-baseweb="popover"][data-placement] {
+    visibility: hidden;
+    transition: visibility 0s 0.15s;
+}
+[data-baseweb="popover"][data-placement]:focus-within,
+[data-baseweb="popover"][data-placement]:hover {
+    visibility: visible;
+    transition: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
     st.title(t("app.title"))
     st.caption(t("app.disclaimer"))
 
@@ -951,13 +1016,21 @@ def main():
         mode = st.radio(t("portfolio.mode_label"), [mode_single, mode_portfolio], horizontal=True)
         is_portfolio = (mode == mode_portfolio)
 
+        # Bug #3: Reset strategy to a portfolio-compatible default when switching to portfolio
+        # mode if "New Car" (single-ticker only) is currently selected.
+        _strategy_key = "strategy_select"
+        if is_portfolio and st.session_state.get(_strategy_key) == t("strategies.new_car"):
+            st.session_state[_strategy_key] = t("strategies.dca")
+
         # --- TICKER / PORTFOLIO INPUTS ---
         if not is_portfolio:
             ticker = st.text_input(t("sidebar.ticker_label"), value="MSFT")
             parsed_tickers = [ticker.strip().upper()] if ticker.strip() else ["MSFT"]
+            # Single-ticker mode includes all strategies
             strategy = st.selectbox(
                 t("sidebar.strategy"),
-                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")]
+                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")],
+                key=_strategy_key,
             )
             weights_pct = {parsed_tickers[0]: 100.0}
             total_capital = 10000.0
@@ -973,9 +1046,11 @@ def main():
             parsed_tickers = list(dict.fromkeys(
                 x.strip().upper() for x in raw_parts if x.strip()
             ))
+            # Bug #3: "New Car" is a single-asset scenario — hide it entirely in portfolio mode
             strategy = st.selectbox(
                 t("sidebar.strategy"),
-                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")]
+                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi")],
+                key=_strategy_key,
             )
 
             if strategy != t("strategies.dca"):
@@ -990,25 +1065,29 @@ def main():
 
             st.caption(t("portfolio.allocations_header"))
 
-            # Auto Equal Weights button
+            # Bug #1 & #2: Auto-rebalance weights when ticker list changes.
+            # Detect ticker change by comparing to previous render's ticker list.
+            _prev_tickers = st.session_state.get("_portfolio_tickers_prev", None)
+            _cur_tickers = tuple(parsed_tickers)
+            if _cur_tickers != _prev_tickers and parsed_tickers:
+                _new_weights = calculate_equal_weights(parsed_tickers)
+                for _tk, _w in _new_weights.items():
+                    st.session_state[f"weight_{_tk}"] = _w
+                st.session_state["_portfolio_tickers_prev"] = _cur_tickers
+
+            # Auto Equal Weights button — uses exact-total helper (Bug #2)
             if st.button(t("portfolio.auto_equal_weights")) and parsed_tickers:
-                n = len(parsed_tickers)
-                base_w = 100 // n
-                remainder = 100 % n
-                for i, tk in enumerate(parsed_tickers):
-                    st.session_state[f"weight_{tk}"] = float(base_w + (1 if i < remainder else 0))
+                _new_weights = calculate_equal_weights(parsed_tickers)
+                for _tk, _w in _new_weights.items():
+                    st.session_state[f"weight_{_tk}"] = _w
                 st.rerun()
 
             # Per-ticker weight inputs
             weights_pct = {}
             if parsed_tickers:
-                n = len(parsed_tickers)
-                base_w = 100 // n
-                remainder = 100 % n
-                for i, tk in enumerate(parsed_tickers):
+                for tk in parsed_tickers:
                     key = f"weight_{tk}"
-                    initial_w = float(base_w + (1 if i < remainder else 0))
-                    default_val = float(st.session_state.get(key, initial_w))
+                    default_val = float(st.session_state.get(key, 100.0 / len(parsed_tickers)))
                     w = st.number_input(
                         t("portfolio.weight_label", ticker=tk),
                         min_value=0.0,
@@ -1022,9 +1101,9 @@ def main():
             # Weight sum indicator
             weight_sum = sum(weights_pct.values())
             if abs(weight_sum - 100.0) <= 0.01:
-                st.success(f"{t('portfolio.weight_sum_label')}: {weight_sum:.1f}% ✓")
+                st.success(f"{t('portfolio.weight_sum_label')}: {weight_sum:.2f}% ✓")
             else:
-                st.error(f"{t('portfolio.weight_sum_label')}: {weight_sum:.1f}% — {t('portfolio.weight_must_be_100')}")
+                st.error(f"{t('portfolio.weight_sum_label')}: {weight_sum:.2f}% — {t('portfolio.weight_must_be_100')}")
 
             portfolio_errors = validate_portfolio_inputs(parsed_tickers, weights_pct)
 
@@ -1053,10 +1132,9 @@ def main():
         }
         internal_strategy = strategy_map.get(strategy, strategy)
 
-        # New Car disabled in portfolio mode
+        # Safety guard: New Car is hidden in portfolio mode dropdown (Bug #3),
+        # so this is False in normal flow but kept as a run-button backstop.
         new_car_in_portfolio = is_portfolio and internal_strategy == "New Car"
-        if new_car_in_portfolio:
-            st.info(t("portfolio.new_car_portfolio_disabled"))
 
         # --- PARAMS ---
         params = {}
@@ -1088,44 +1166,44 @@ def main():
             with c2:
                 params["amount"] = st.number_input(t("params.dollar_amount"), min_value=100, value=1000, step=100)
         elif strategy == t("strategies.new_car"):
-            if not new_car_in_portfolio:
-                st.info(t("info.new_car_desc"))
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    params["car_price"] = st.number_input(t("params.car_price"), min_value=5000, value=30000, step=500)
-                    params["down_payment_amount"] = st.number_input(t("params.down_payment"), min_value=0, value=6000, step=500)
-                with c2:
-                    params["term_months"] = st.selectbox(t("params.term_months"), [12, 24, 36, 48, 60], index=2)
-                    params["payment_frequency"] = st.selectbox(t("params.payment_frequency"), ["Monthly", "Biweekly", "Weekly"], index=0)
-                with c3:
-                    params["apr"] = st.number_input(t("params.apr"), min_value=0.0, max_value=25.0, value=5.0, step=0.1)
+            # New Car is only reachable in single-ticker mode (hidden from portfolio dropdown)
+            st.info(t("info.new_car_desc"))
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                params["car_price"] = st.number_input(t("params.car_price"), min_value=5000, value=30000, step=500)
+                params["down_payment_amount"] = st.number_input(t("params.down_payment"), min_value=0, value=6000, step=500)
+            with c2:
+                params["term_months"] = st.selectbox(t("params.term_months"), [12, 24, 36, 48, 60], index=2)
+                params["payment_frequency"] = st.selectbox(t("params.payment_frequency"), ["Monthly", "Biweekly", "Weekly"], index=0)
+            with c3:
+                params["apr"] = st.number_input(t("params.apr"), min_value=0.0, max_value=25.0, value=5.0, step=0.1)
 
-                car_price = float(params["car_price"])
-                dp = float(params["down_payment_amount"])
-                financed = max(car_price - dp, 0)
-                apr = float(params["apr"]) / 100.0
-                term_months = int(params["term_months"])
-                freq = params["payment_frequency"]
-                if freq == "Monthly":
-                    num_loan_payments = term_months
-                    rate_per_period = apr / 12
-                elif freq == "Biweekly":
-                    num_loan_payments = int(round(term_months * 26 / 12))
-                    rate_per_period = apr / 26
-                else:  # Weekly
-                    num_loan_payments = int(round(term_months * 52 / 12))
-                    rate_per_period = apr / 52
-                num_loan_payments = max(num_loan_payments, 1)
+            car_price = float(params["car_price"])
+            dp = float(params["down_payment_amount"])
+            financed = max(car_price - dp, 0)
+            apr = float(params["apr"]) / 100.0
+            term_months = int(params["term_months"])
+            freq = params["payment_frequency"]
+            if freq == "Monthly":
+                num_loan_payments = term_months
+                rate_per_period = apr / 12
+            elif freq == "Biweekly":
+                num_loan_payments = int(round(term_months * 26 / 12))
+                rate_per_period = apr / 26
+            else:  # Weekly
+                num_loan_payments = int(round(term_months * 52 / 12))
+                rate_per_period = apr / 52
+            num_loan_payments = max(num_loan_payments, 1)
 
-                if rate_per_period > 0 and financed > 0:
-                    periodic_payment = financed * (rate_per_period * (1 + rate_per_period) ** num_loan_payments) / ((1 + rate_per_period) ** num_loan_payments - 1)
-                else:
-                    periodic_payment = financed / num_loan_payments if num_loan_payments > 0 else 0
+            if rate_per_period > 0 and financed > 0:
+                periodic_payment = financed * (rate_per_period * (1 + rate_per_period) ** num_loan_payments) / ((1 + rate_per_period) ** num_loan_payments - 1)
+            else:
+                periodic_payment = financed / num_loan_payments if num_loan_payments > 0 else 0
 
-                params["_computed_periodic_payment"] = periodic_payment
-                params["_computed_num_loan_payments"] = num_loan_payments
-                params["_total_to_invest"] = dp + (periodic_payment * num_loan_payments)
-                st.caption(t("info.car_payment_summary", dp=f"{dp:,.0f}", num_payments=num_loan_payments, payment=f"{periodic_payment:,.2f}", apr=f"{apr*100:.2f}", total=f"{dp + (periodic_payment * num_loan_payments):,.0f}"))
+            params["_computed_periodic_payment"] = periodic_payment
+            params["_computed_num_loan_payments"] = num_loan_payments
+            params["_total_to_invest"] = dp + (periodic_payment * num_loan_payments)
+            st.caption(t("info.car_payment_summary", dp=f"{dp:,.0f}", num_payments=num_loan_payments, payment=f"{periodic_payment:,.2f}", apr=f"{apr*100:.2f}", total=f"{dp + (periodic_payment * num_loan_payments):,.0f}"))
 
         slippage_bps = st.slider(t("sidebar.slippage_label"), min_value=0, max_value=50, value=0)
 
