@@ -1,12 +1,17 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from app import (
-    load_data, compute_signals, backtest, sharpe_ratio, max_drawdown,
-    validate_portfolio_inputs, compute_portfolio_params,
-    aggregate_portfolio_equity, run_portfolio_backtest, PortfolioResult,
-    calculate_equal_weights,
+
+from data import load_data, calculate_equal_weights
+from strategies import compute_signals
+from backtest import backtest, sharpe_ratio, max_drawdown
+from portfolio import (
+    validate_portfolio_inputs,
+    compute_portfolio_params,
+    aggregate_portfolio_equity,
+    run_portfolio_backtest,
 )
+from models import PortfolioResult
 
 
 # ---------------------------------------------------------------------------

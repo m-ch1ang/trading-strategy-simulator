@@ -42,6 +42,22 @@ What if you had invested the money for a new car into a stock instead? This stra
 - Tracks total invested vs current value, gains, number of payments made, and completion status of the payment schedule
 If the historical period ends before all scheduled payments, the strategy reports progress so far.
 
+## Project structure
+
+```
+simulator/
+├── app.py          # Streamlit UI — entry point (main())
+├── models.py       # Shared data classes (PortfolioResult)
+├── data.py         # Data fetching (load_data, calculate_equal_weights)
+├── strategies.py   # Signal generation (calc_rsi, compute_signals)
+├── backtest.py     # Backtest engine + metrics (backtest, sharpe_ratio, max_drawdown)
+├── portfolio.py    # Portfolio orchestration (run_portfolio_backtest, etc.)
+└── smoke_test.py   # Unit + integration tests
+i18n/
+├── i18n.py         # Translation helpers (t, set_language, get_lang)
+└── locales/        # Locale JSON files (en.json, zh-TW.json, zh-CN.json)
+```
+
 ## Quick start
 
 1. Create a virtual environment and install deps
@@ -69,10 +85,10 @@ The app supports multiple languages:
 - Browser locale detection attempts to set the initial language (defaults to English if detection fails)
 
 ### Locale Files
-Translation files are stored in `locales/` directory:
-- `locales/en.yml`: English translations
-- `locales/zh-TW.yml`: Traditional Chinese translations
-- `locales/zh-CN.yml`: Simplified Chinese translations
+Translation files are stored in `i18n/locales/`:
+- `i18n/locales/en.json`: English translations
+- `i18n/locales/zh-TW.json`: Traditional Chinese translations
+- `i18n/locales/zh-CN.json`: Simplified Chinese translations
 
 ### Number and Currency Formatting
 The app uses Babel for locale-aware formatting:
