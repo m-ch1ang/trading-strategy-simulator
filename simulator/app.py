@@ -16,6 +16,14 @@ _MARKDOWN_ESCAPE_CHARS = frozenset(r"\*_$[]()#+-{}.!`")
 def escape_streamlit_markdown(text: str) -> str:
     """Escape characters Streamlit treats as Markdown/LaTeX (e.g. $ for math mode)."""
     return "".join(f"\\{c}" if c in _MARKDOWN_ESCAPE_CHARS else c for c in text)
+
+
+def _collapse_instructions_expander():
+    """Remount the instructions expander in collapsed state (see main())."""
+    st.session_state["instructions_expanded"] = False
+    st.session_state["instructions_nonce"] = (
+        st.session_state.get("instructions_nonce", 0) + 1
+    )
 from strategies import compute_signals
 from backtest import backtest, sharpe_ratio, max_drawdown
 from portfolio import (
@@ -91,38 +99,6 @@ def main():
 
     st.title(t("app.title"))
     st.caption(t("app.disclaimer"))
-
-    # Instructions
-    with st.expander(t("instructions.title"), expanded=False):
-        st.markdown(f"""
-        ### {t("instructions.getting_started")}
-        1. **{t("instructions.step1")}**
-        2. **{t("instructions.step2")}**
-        3. **{t("instructions.step3")}**
-        4. **{t("instructions.step4")}**
-        5. **{t("instructions.step5")}**
-
-        ### {t("instructions.ticker_guidelines")}
-        - **{t("instructions.us_stocks")}**
-        - **{t("instructions.non_us_stocks")}**
-          - {t("instructions.uk_stocks")}
-          - {t("instructions.ca_stocks")}
-          - {t("instructions.de_stocks")}
-          - {t("instructions.au_stocks")}
-          - {t("instructions.cn_stocks")}
-          - {t("instructions.hk_stocks")}
-          - {t("instructions.tw_stocks")}
-          - {t("instructions.sg_stocks")}
-          - {t("instructions.jp_stocks")}
-        - **{t("instructions.crypto")}**
-        - **{t("instructions.not_sure")}**
-
-        ### {t("instructions.understanding_results")}
-        - **{t("instructions.price_chart")}**
-        - **{t("instructions.equity_curve")}**
-        - **{t("instructions.metrics")}**
-        - **{t("instructions.trades_table")}**
-        """)
 
     # Sidebar inputs
     with st.sidebar:
@@ -345,7 +321,69 @@ def main():
         slippage_bps = st.slider(t("sidebar.slippage_label"), min_value=0, max_value=50, value=0)
 
         run_disabled = is_portfolio and (bool(portfolio_errors) or new_car_in_portfolio)
-        run = st.button(t("sidebar.run_button"), type="primary", disabled=run_disabled)
+        run = st.button(
+            t("sidebar.run_button"),
+            type="primary",
+            disabled=run_disabled,
+            on_click=_collapse_instructions_expander,
+        )
+
+    _instr_nonce = st.session_state.get("instructions_nonce", 0)
+    _instr_label = t("instructions.title") + ("\u200b" * _instr_nonce)
+    with st.expander(
+        _instr_label,
+        expanded=st.session_state.get("instructions_expanded", False),
+    ):
+        st.markdown(f"""
+        ### {t("instructions.getting_started")}
+        1. {t("instructions.mobile_sidebar")}
+        2. {t("instructions.step1")}
+        3. {t("instructions.step2")}
+        4. {t("instructions.step3")}
+        5. {t("instructions.step4")}
+        6. {t("instructions.step5")}
+
+        ### {t("instructions.single_mode")}
+        - {t("instructions.single_step1")}
+        - {t("instructions.single_step2")}
+
+        ### {t("instructions.portfolio_mode")}
+        - {t("instructions.portfolio_step1")}
+        - {t("instructions.portfolio_step2")}
+        - {t("instructions.portfolio_step3")}
+        - {t("instructions.portfolio_step4")}
+        - {t("instructions.portfolio_step5")}
+        - {t("instructions.portfolio_note")}
+
+        ### {t("instructions.ticker_guidelines")}
+        - **{t("instructions.us_stocks")}**
+        - **{t("instructions.non_us_stocks")}**
+          - {t("instructions.uk_stocks")}
+          - {t("instructions.ca_stocks")}
+          - {t("instructions.de_stocks")}
+          - {t("instructions.au_stocks")}
+          - {t("instructions.cn_stocks")}
+          - {t("instructions.hk_stocks")}
+          - {t("instructions.tw_stocks")}
+          - {t("instructions.sg_stocks")}
+          - {t("instructions.jp_stocks")}
+        - **{t("instructions.crypto")}**
+        - {t("instructions.not_sure")}
+
+        ### {t("instructions.understanding_results")}
+        **{t("instructions.single_results")}**
+        - **{t("instructions.price_chart")}**
+        - **{t("instructions.equity_curve")}**
+        - **{t("instructions.metrics")}**
+        - **{t("instructions.trades_table")}**
+
+        **{t("instructions.portfolio_results")}**
+        - **{t("instructions.portfolio_equity")}**
+        - **{t("instructions.per_ticker_equity")}**
+        - **{t("instructions.portfolio_metrics")}**
+        - **{t("instructions.portfolio_trades")}**
+        - **{t("instructions.portfolio_detail")}**
+        """)
 
     # ------------------------------------------------------------------ #
     # RUN BLOCK                                                            #
