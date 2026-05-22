@@ -59,13 +59,13 @@ def main():
     # user actively presses a key while the input is focused.
     st.markdown("""
 <style>
-/* Sidebar: Streamlit 1.50 default is 256px; use 384px (50% wider) */
+/* Sidebar: 480px (25% wider than previous 384px override) */
 [data-testid="stSidebar"][aria-expanded="true"] {
-    width: 384px !important;
-    min-width: 384px !important;
+    width: 480px !important;
+    min-width: 480px !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] > div:first-child {
-    width: 384px !important;
+    width: 480px !important;
 }
 /* Hide calendar popover that appears on Tab focus; keep visible on user interaction */
 [data-baseweb="popover"][data-placement] {
