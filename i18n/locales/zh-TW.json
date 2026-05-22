@@ -136,6 +136,8 @@
     "title": "交易",
     "entry_date": "進場日期",
     "exit_date": "出場日期",
+    "cost_per_share": "每股成本",
+    "total_cost": "總成本",
     "pnl": "損益",
     "return_pct": "回報（%）",
     "no_trades": "此期間內無完成交易。",

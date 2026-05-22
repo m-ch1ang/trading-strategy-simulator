@@ -1,12 +1,15 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import time
 import sys
 import os
+import json
 import copy
+import urllib.request
+import urllib.parse
+import importlib
 from dataclasses import dataclass, field
 from functools import reduce
 
@@ -17,6 +20,37 @@ except Exception:
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from i18n.i18n import t, set_language, get_lang
+
+
+def resolve_plotly_module():
+    """Resolve a Plotly module that definitely exposes Figure/Scatter."""
+    # Preferred modern import path.
+    try:
+        go_mod = importlib.import_module("plotly.graph_objects")
+        if hasattr(go_mod, "Figure") and hasattr(go_mod, "Scatter"):
+            return go_mod
+    except Exception:
+        pass
+
+    # Legacy alias import path.
+    try:
+        go_mod = importlib.import_module("plotly.graph_objs")
+        if hasattr(go_mod, "Figure") and hasattr(go_mod, "Scatter"):
+            return go_mod
+    except Exception:
+        pass
+
+    # Self-heal for stale namespace packages in a long-running process.
+    for mod_name in [m for m in list(sys.modules.keys()) if m == "plotly" or m.startswith("plotly.")]:
+        sys.modules.pop(mod_name, None)
+    importlib.invalidate_caches()
+    go_mod = importlib.import_module("plotly.graph_objects")
+    if hasattr(go_mod, "Figure") and hasattr(go_mod, "Scatter"):
+        return go_mod
+    raise ImportError("Plotly module loaded without Figure/Scatter support.")
+
+
+go = resolve_plotly_module()
 
 
 @dataclass
@@ -56,6 +90,13 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v5_yahoo_retry
     if start_dt >= end_dt:
         end_dt = start_dt + pd.Timedelta(days=1)
 
+    def normalize_date_index(idx):
+        """Return a timezone-naive DatetimeIndex for mixed provider outputs."""
+        dt_idx = pd.to_datetime(idx)
+        if getattr(dt_idx, "tz", None) is not None:
+            dt_idx = dt_idx.tz_localize(None)
+        return dt_idx
+
     # Primary: Yahoo Finance via yfinance (with retry to handle transient throttling/session issues)
     try:
         import yfinance as yf
@@ -77,7 +118,6 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v5_yahoo_retry
                 # yfinance can return MultiIndex columns for some tickers/configs.
                 if isinstance(yahoo_df.columns, pd.MultiIndex):
                     yahoo_df.columns = yahoo_df.columns.get_level_values(0)
-
                 if not yahoo_df.empty and "Close" in yahoo_df.columns:
                     break
             except Exception:
@@ -94,9 +134,44 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v5_yahoo_retry
                 "Close": "close",
                 "Volume": "volume"
             })
-            df.index = pd.to_datetime(df.index).tz_localize(None)
+            df.index = normalize_date_index(df.index)
             df.index.name = "date"
             return df, "yahoo"
+    except Exception:
+        pass
+
+    # Secondary fallback: Yahoo Chart API (independent of yfinance/curl_cffi)
+    try:
+        period1 = int(pd.Timestamp(start_dt).timestamp())
+        period2 = int(pd.Timestamp(end_dt).timestamp())
+        chart_url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ticker.upper())}"
+            f"?period1={period1}&period2={period2}&interval=1d&events=history"
+        )
+        req = urllib.request.Request(chart_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            chart_raw = resp.read().decode("utf-8", errors="replace")
+            chart_status = getattr(resp, "status", "unknown")
+        chart_json = json.loads(chart_raw)
+        chart_data = chart_json.get("chart", {})
+        result = chart_data.get("result") or []
+        if result:
+            r0 = result[0]
+            ts = r0.get("timestamp") or []
+            quote = (((r0.get("indicators") or {}).get("quote") or [{}])[0]) or {}
+            chart_df = pd.DataFrame({
+                "date": pd.to_datetime(ts, unit="s", utc=True).tz_localize(None),
+                "open": quote.get("open", []),
+                "high": quote.get("high", []),
+                "low": quote.get("low", []),
+                "close": quote.get("close", []),
+                "volume": quote.get("volume", []),
+            })
+            chart_df = chart_df.dropna(subset=["close"])
+            if not chart_df.empty:
+                chart_df = chart_df.set_index("date").sort_index()
+                chart_df.index.name = "date"
+                return chart_df, "yahoo"
     except Exception:
         pass
 
@@ -119,7 +194,7 @@ def load_data(ticker: str, start: str, end: str, _version: str = "v5_yahoo_retry
                 if isinstance(stq, pd.DataFrame) and not stq.empty and "Close" in stq.columns:
                     stq = stq.sort_index()  # Stooq data is often in reverse chronological order
                     df = stq.rename(columns={"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"})
-                    df.index = pd.to_datetime(df.index).tz_localize(None)
+                    df.index = normalize_date_index(df.index)
                     df.index.name = "date"
                     return df, "stooq"
             except Exception:
@@ -558,7 +633,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             px_out = prices.iloc[-1]  # Final price
             pnl = (px_out - px_in) * shares_bought
             ret_pct = (px_out / px_in - 1) * 100
-            trades.append({"date_in": date, "date_out": df.index[-1], "pnl": pnl, "return_pct": ret_pct})
+            trades.append({
+                "date_in": date,
+                "date_out": df.index[-1],
+                "cost_per_share": px_in,
+                "total_cost": shares_bought * px_in,
+                "pnl": pnl,
+                "return_pct": ret_pct,
+            })
         trades_df = pd.DataFrame(trades)
     elif strategy == "Buy & Hold":
         # For Buy & Hold, show one trade from start to end
@@ -568,7 +650,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
         shares_bought = amount / px_in
         pnl = (px_out - px_in) * shares_bought
         ret_pct = (px_out / px_in - 1) * 100
-        trades = [{"date_in": df.index[0], "date_out": df.index[-1], "pnl": pnl, "return_pct": ret_pct}]
+        trades = [{
+            "date_in": df.index[0],
+            "date_out": df.index[-1],
+            "cost_per_share": px_in,
+            "total_cost": shares_bought * px_in,
+            "pnl": pnl,
+            "return_pct": ret_pct,
+        }]
         trades_df = pd.DataFrame(trades)
     elif strategy == "New Car":
         trades = []
@@ -579,7 +668,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             px_out = prices.iloc[-1]
             pnl = (px_out - px_in) * shares_bought
             ret_pct = (px_out / px_in - 1) * 100
-            trades.append({"date_in": date, "date_out": df.index[-1], "pnl": pnl, "return_pct": ret_pct})
+            trades.append({
+                "date_in": date,
+                "date_out": df.index[-1],
+                "cost_per_share": px_in,
+                "total_cost": invest_amt,
+                "pnl": pnl,
+                "return_pct": ret_pct,
+            })
         trades_df = pd.DataFrame(trades)
     else:
         # Original trade extraction logic for other strategies
@@ -606,7 +702,14 @@ def backtest(df: pd.DataFrame, slippage_bps: float = 0.0, strategy: str = "", pa
             px_out = prices.loc[exit_date]
             pnl = px_out - px_in
             ret_pct = (px_out / px_in - 1) * 100
-            trades.append({"date_in": entry_date, "date_out": exit_date, "pnl": pnl, "return_pct": ret_pct})
+            trades.append({
+                "date_in": entry_date,
+                "date_out": exit_date,
+                "cost_per_share": px_in,
+                "total_cost": px_in,
+                "pnl": pnl,
+                "return_pct": ret_pct,
+            })
             i += 1
 
         trades_df = pd.DataFrame(trades)
@@ -652,10 +755,16 @@ def validate_portfolio_inputs(tickers: list, weights: dict) -> list:
 
 
 def compute_portfolio_params(base_params: dict, weight: float, total_capital: float, strategy: str) -> dict:
-    """Return a deep copy of params with amount scaled by weight for dollar-based strategies."""
+    """Return a deep copy of params with amount scaled by weight for dollar-based strategies.
+
+    For Buy & Hold, total_capital is split by weight.
+    For DCA, the user-entered amount per purchase is split by weight.
+    """
     p = copy.deepcopy(base_params)
-    if strategy in ("Buy & Hold", "Dollar Cost Averaging"):
+    if strategy == "Buy & Hold":
         p["amount"] = total_capital * weight
+    elif strategy == "Dollar Cost Averaging":
+        p["amount"] = p.get("amount", 0) * weight
     return p
 
 
@@ -751,6 +860,14 @@ def run_portfolio_backtest(
 
     portfolio_df["bh_equity"] = bh_equity
 
+    # For DCA, derive total_capital from the actual amounts invested across all tickers.
+    if strategy == "Dollar Cost Averaging":
+        total_capital = sum(
+            r["dca_metrics"].get("total_invested", 0)
+            for r in ticker_results.values()
+            if r.get("dca_metrics")
+        )
+
     return PortfolioResult(
         portfolio_equity=portfolio_df["portfolio_equity"],
         portfolio_ret=portfolio_df["portfolio_ret"],
@@ -838,6 +955,10 @@ def main():
         if not is_portfolio:
             ticker = st.text_input(t("sidebar.ticker_label"), value="MSFT")
             parsed_tickers = [ticker.strip().upper()] if ticker.strip() else ["MSFT"]
+            strategy = st.selectbox(
+                t("sidebar.strategy"),
+                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")]
+            )
             weights_pct = {parsed_tickers[0]: 100.0}
             total_capital = 10000.0
             portfolio_errors = []
@@ -852,13 +973,20 @@ def main():
             parsed_tickers = list(dict.fromkeys(
                 x.strip().upper() for x in raw_parts if x.strip()
             ))
-
-            total_capital = st.number_input(
-                t("portfolio.total_capital_label"),
-                min_value=100.0,
-                value=10000.0,
-                step=1000.0,
+            strategy = st.selectbox(
+                t("sidebar.strategy"),
+                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")]
             )
+
+            if strategy != t("strategies.dca"):
+                total_capital = st.number_input(
+                    t("portfolio.total_capital_label"),
+                    min_value=100.0,
+                    value=10000.0,
+                    step=1000.0,
+                )
+            else:
+                total_capital = 0.0
 
             st.caption(t("portfolio.allocations_header"))
 
@@ -915,12 +1043,6 @@ def main():
                 max_value=datetime.today(),
             )
 
-        # --- STRATEGY ---
-        strategy = st.selectbox(
-            t("sidebar.strategy"),
-            [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")]
-        )
-
         # Map translated strategy names back to internal names
         strategy_map = {
             t("strategies.dca"): "Dollar Cost Averaging",
@@ -964,11 +1086,7 @@ def main():
             with c1:
                 params["frequency"] = st.selectbox(t("params.buy_frequency"), ["Weekly", "Monthly", "Quarterly"], index=1)
             with c2:
-                if not is_portfolio:
-                    params["amount"] = st.number_input(t("params.dollar_amount"), min_value=100, value=1000, step=100)
-                else:
-                    params["amount"] = total_capital  # overridden per-ticker in run_portfolio_backtest
-                    st.caption(t("portfolio.amount_from_capital"))
+                params["amount"] = st.number_input(t("params.dollar_amount"), min_value=100, value=1000, step=100)
         elif strategy == t("strategies.new_car"):
             if not new_car_in_portfolio:
                 st.info(t("info.new_car_desc"))
@@ -1169,14 +1287,29 @@ def main():
                 tshow = trades_df.copy()
                 tshow["date_in"] = pd.to_datetime(tshow["date_in"]).dt.strftime("%Y-%m-%d")
                 tshow["date_out"] = pd.to_datetime(tshow["date_out"]).dt.strftime("%Y-%m-%d")
+                if "cost_per_share" in tshow.columns:
+                    tshow["cost_per_share"] = tshow["cost_per_share"].map(lambda x: f"${float(x):,.2f}")
+                if "total_cost" in tshow.columns:
+                    tshow["total_cost"] = tshow["total_cost"].map(lambda x: f"${float(x):,.2f}")
                 tshow["pnl"] = tshow["pnl"].map(lambda x: f"${float(x):,.2f}")
                 tshow["return_pct"] = tshow["return_pct"].map(lambda x: f"{float(x):.2f}%")
                 tshow = tshow.rename(columns={
                     "date_in": t("trades.entry_date"),
                     "date_out": t("trades.exit_date"),
+                    "cost_per_share": t("trades.cost_per_share"),
+                    "total_cost": t("trades.total_cost"),
                     "pnl": t("trades.pnl"),
                     "return_pct": t("trades.return_pct")
                 })
+                ordered_cols = [
+                    t("trades.entry_date"),
+                    t("trades.exit_date"),
+                    t("trades.cost_per_share"),
+                    t("trades.total_cost"),
+                    t("trades.pnl"),
+                    t("trades.return_pct"),
+                ]
+                tshow = tshow[[col for col in ordered_cols if col in tshow.columns]]
                 st.dataframe(tshow, use_container_width=True, hide_index=True)
             else:
                 st.info(t("trades.no_trades"))
@@ -1231,12 +1364,28 @@ def main():
             c4.metric("SPY " + t("metrics.buy_hold_return"), f"{spy_return*100:.2f}%")
 
             # ---- PORTFOLIO DOLLAR METRICS (3-column) ----
-            port_total_value = portfolio_result.total_capital * float(portfolio_result.portfolio_equity.iloc[-1])
-            port_total_gain = port_total_value - portfolio_result.total_capital
-            gain_pct = port_total_gain / portfolio_result.total_capital * 100
+            if internal_strategy == "Dollar Cost Averaging":
+                # Sum per-ticker actuals from dca_metrics
+                port_total_invested = sum(
+                    r["dca_metrics"].get("total_invested", 0)
+                    for r in portfolio_result.ticker_results.values()
+                    if r.get("dca_metrics")
+                )
+                port_total_value = sum(
+                    r["dca_metrics"].get("total_value", 0)
+                    for r in portfolio_result.ticker_results.values()
+                    if r.get("dca_metrics")
+                )
+                port_total_gain = port_total_value - port_total_invested
+                gain_pct = (port_total_gain / port_total_invested * 100) if port_total_invested else 0.0
+            else:
+                port_total_invested = portfolio_result.total_capital
+                port_total_value = portfolio_result.total_capital * float(portfolio_result.portfolio_equity.iloc[-1])
+                port_total_gain = port_total_value - port_total_invested
+                gain_pct = (port_total_gain / port_total_invested * 100) if port_total_invested else 0.0
 
             dm1, dm2, dm3 = st.columns(3)
-            dm1.metric(t("dca_metrics.total_invested"), f"${portfolio_result.total_capital:,.2f}")
+            dm1.metric(t("dca_metrics.total_invested"), f"${port_total_invested:,.2f}")
             dm2.metric(t("dca_metrics.total_value"), f"${port_total_value:,.2f}")
             dm3.metric(t("dca_metrics.total_gain"), f"${port_total_gain:,.2f}", delta=f"{gain_pct:+.2f}%")
 
@@ -1299,14 +1448,30 @@ def main():
                 tshow = combined_trades.copy()
                 tshow["date_in"] = pd.to_datetime(tshow["date_in"]).dt.strftime("%Y-%m-%d")
                 tshow["date_out"] = pd.to_datetime(tshow["date_out"]).dt.strftime("%Y-%m-%d")
+                if "cost_per_share" in tshow.columns:
+                    tshow["cost_per_share"] = tshow["cost_per_share"].map(lambda x: f"${float(x):,.2f}")
+                if "total_cost" in tshow.columns:
+                    tshow["total_cost"] = tshow["total_cost"].map(lambda x: f"${float(x):,.2f}")
                 tshow["pnl"] = tshow["pnl"].map(lambda x: f"${float(x):,.2f}")
                 tshow["return_pct"] = tshow["return_pct"].map(lambda x: f"{float(x):.2f}%")
                 tshow = tshow.rename(columns={
                     "date_in": t("trades.entry_date"),
                     "date_out": t("trades.exit_date"),
+                    "cost_per_share": t("trades.cost_per_share"),
+                    "total_cost": t("trades.total_cost"),
                     "pnl": t("trades.pnl"),
                     "return_pct": t("trades.return_pct"),
                 })
+                ordered_cols = [
+                    t("trades.ticker_col"),
+                    t("trades.entry_date"),
+                    t("trades.exit_date"),
+                    t("trades.cost_per_share"),
+                    t("trades.total_cost"),
+                    t("trades.pnl"),
+                    t("trades.return_pct"),
+                ]
+                tshow = tshow[[col for col in ordered_cols if col in tshow.columns]]
                 st.dataframe(tshow, use_container_width=True, hide_index=True)
             else:
                 st.info(t("trades.no_trades"))

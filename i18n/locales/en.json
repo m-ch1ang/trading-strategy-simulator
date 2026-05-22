@@ -136,6 +136,8 @@
     "title": "Trades",
     "entry_date": "Entry Date",
     "exit_date": "Exit Date",
+    "cost_per_share": "Cost / Share",
+    "total_cost": "Total Cost",
     "pnl": "Profit / Loss",
     "return_pct": "Return (%)",
     "no_trades": "No completed trades in the period.",
