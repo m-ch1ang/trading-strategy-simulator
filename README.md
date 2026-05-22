@@ -2,6 +2,30 @@
 
 Interactive Streamlit app to backtest simple trading strategies on stocks.
 
+## Multi-ticker portfolio pipeline
+
+When running multiple tickers with portfolio weights, data is loaded and backtested per ticker in parallel, then merged into a single weighted portfolio view.
+
+```mermaid
+flowchart TB
+    UI["Multi-ticker + weights UI"]
+
+    UI --> L1["load_data ticker 1"]
+    UI --> L2["load_data ticker 2"]
+    UI --> LN["load_data ticker N"]
+
+    L1 --> C1["compute_signals + backtest"]
+    L2 --> C2["compute_signals + backtest"]
+    LN --> CN["compute_signals + backtest"]
+
+    C1 --> Align["Align on common dates"]
+    C2 --> Align
+    CN --> Align
+
+    Align --> Portfolio["Weighted portfolio equity + metrics"]
+    Portfolio --> Views["Portfolio + per-ticker views"]
+```
+
 ## Features
 - Ticker input and date range selection
 - Strategy picker: Moving Average Crossover, RSI Strategy, Dollar Cost Averaging, Buy & Hold, New Car

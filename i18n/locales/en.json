@@ -74,7 +74,8 @@
     "report_issue": "🐛 If you've verified the ticker is correct and it still doesn't work, please reach out to mike.chiang996@gmail.com to report this issue.",
     "no_data": "No data loaded for {ticker}. Check ticker or date range.",
     "backtest_error": "Error during backtesting: {error}",
-    "try_again": "Please try again or contact support if the issue persists."
+    "try_again": "Please try again or contact support if the issue persists.",
+    "portfolio_all_failed": "❌ No data could be loaded for any of the selected tickers. Check symbols and date range."
   },
   "data_source": {
     "yahoo": "📈 Using Yahoo Finance historical data",
@@ -92,7 +93,10 @@
     "buy_hold": "Buy & Hold",
     "spy_buy_hold": "SPY Buy & Hold",
     "spy_dca": "SPY Dollar Cost Averaging",
-    "car_depreciation": "Car Depreciation"
+    "car_depreciation": "Car Depreciation",
+    "portfolio_equity_title": "Portfolio Equity Curve",
+    "per_ticker_equity_title": "Per-Ticker Equity Curves (Normalized to 1.0)",
+    "portfolio_strategy": "Portfolio Strategy"
   },
   "metrics": {
     "total_return": "Total Return",
@@ -101,7 +105,8 @@
     "buy_hold_return": "Buy & Hold Return",
     "spy_buy_hold_return": "SPY Buy & Hold Return",
     "spy_dca_return": "SPY Dollar Cost Averaging Return",
-    "car_depreciation_return": "Car Depreciation Return"
+    "car_depreciation_return": "Car Depreciation Return",
+    "portfolio_total_return": "Portfolio Total Return"
   },
   "dca_metrics": {
     "title": "Dollar Cost Averaging Metrics",
@@ -133,7 +138,40 @@
     "exit_date": "Exit Date",
     "pnl": "Profit / Loss",
     "return_pct": "Return (%)",
-    "no_trades": "No completed trades in the period."
+    "no_trades": "No completed trades in the period.",
+    "ticker_col": "Ticker",
+    "filter_label": "Show trades for"
+  },
+  "portfolio": {
+    "mode_label": "Mode",
+    "mode_single": "Single Ticker",
+    "mode_portfolio": "Portfolio",
+    "tickers_label": "Tickers (comma-separated or one per line)",
+    "total_capital_label": "Total Portfolio Capital ($)",
+    "allocations_header": "Allocations",
+    "auto_equal_weights": "Auto Equal Weights",
+    "weight_label": "{ticker} Weight (%)",
+    "weight_sum_label": "Total Allocation",
+    "weight_must_be_100": "must equal 100%",
+    "weight_error_sum": "Weights sum to {sum}% — must equal 100%",
+    "weight_error_positive": "Each ticker must have a positive weight",
+    "weight_error_duplicate": "Duplicate ticker: {ticker}",
+    "weight_error_min_tickers": "Portfolio mode requires at least 2 tickers",
+    "skipped_tickers_warning": "⚠️ Could not load data for: {tickers}. Weights renormalized among remaining tickers.",
+    "effective_weights_caption": "Effective weights: {weights}",
+    "min_overlap_error": "Insufficient date overlap ({days} trading days). Minimum 30 required — try expanding the date range or removing tickers with limited history.",
+    "new_car_portfolio_disabled": "ℹ️ New Car strategy is a single-asset 'what-if' scenario and is not available in portfolio mode.",
+    "amount_from_capital": "Amount per ticker derived from Total Capital × weight."
+  },
+  "portfolio_detail": {
+    "title": "Per-Ticker Detail",
+    "ticker_col": "Ticker",
+    "weight_col": "Weight",
+    "allocation_col": "Allocation ($)",
+    "return_col": "Total Return",
+    "sharpe_col": "Sharpe",
+    "mdd_col": "Max Drawdown",
+    "source_col": "Data Source"
   },
   "ui": {
     "waiting": "Set parameters and click 'Run Strategy' in the sidebar.",
