@@ -74,7 +74,8 @@
     "report_issue": "🐛 如果您已验证代码正确但仍无法使用，请联系 mike.chiang996@gmail.com 报告此问题。",
     "no_data": "未加载 {ticker} 的数据。请检查代码或日期范围。",
     "backtest_error": "回测期间发生错误：{error}",
-    "try_again": "请重试，如果问题持续存在，请联系支持。"
+    "try_again": "请重试，如果问题持续存在，请联系支持。",
+    "portfolio_all_failed": "❌ 无法加载任何所选股票的数据。请检查代码和日期范围。"
   },
   "data_source": {
     "yahoo": "📈 使用 Yahoo Finance 历史数据",
@@ -92,7 +93,10 @@
     "buy_hold": "买入持有",
     "spy_buy_hold": "SPY 买入持有",
     "spy_dca": "SPY 定投策略",
-    "car_depreciation": "汽车折旧"
+    "car_depreciation": "汽车折旧",
+    "portfolio_equity_title": "投资组合权益曲线",
+    "per_ticker_equity_title": "各股票权益曲线（基准化至 1.0）",
+    "portfolio_strategy": "投资组合策略"
   },
   "metrics": {
     "total_return": "总回报",
@@ -101,7 +105,8 @@
     "buy_hold_return": "买入持有回报",
     "spy_buy_hold_return": "SPY 买入持有回报",
     "spy_dca_return": "SPY 定投策略回报",
-    "car_depreciation_return": "汽车折旧回报"
+    "car_depreciation_return": "汽车折旧回报",
+    "portfolio_total_return": "投资组合总回报"
   },
   "dca_metrics": {
     "title": "定投策略指标",
@@ -133,7 +138,40 @@
     "exit_date": "出场日期",
     "pnl": "损益",
     "return_pct": "回报（%）",
-    "no_trades": "此期间内无完成交易。"
+    "no_trades": "此期间内无完成交易。",
+    "ticker_col": "股票代码",
+    "filter_label": "显示以下股票的交易"
+  },
+  "portfolio": {
+    "mode_label": "模式",
+    "mode_single": "单一股票",
+    "mode_portfolio": "投资组合",
+    "tickers_label": "股票代码（逗号分隔或每行一个）",
+    "total_capital_label": "投资组合总资本（美元）",
+    "allocations_header": "资金配置",
+    "auto_equal_weights": "自动平均分配",
+    "weight_label": "{ticker} 权重（%）",
+    "weight_sum_label": "总配置",
+    "weight_must_be_100": "必须等于 100%",
+    "weight_error_sum": "权重总和为 {sum}% — 必须等于 100%",
+    "weight_error_positive": "每个股票必须有正数权重",
+    "weight_error_duplicate": "重复的股票代码：{ticker}",
+    "weight_error_min_tickers": "投资组合模式需要至少 2 个股票",
+    "skipped_tickers_warning": "⚠️ 无法加载以下股票的数据：{tickers}。已重新分配剩余股票的权重。",
+    "effective_weights_caption": "实际权重：{weights}",
+    "min_overlap_error": "日期重叠不足（{days} 个交易日）。最少需要 30 个交易日 — 请尝试扩大日期范围或移除历史数据有限的股票。",
+    "new_car_portfolio_disabled": "ℹ️ 新车策略是单一资产的「假设情境」，不适用于投资组合模式。",
+    "amount_from_capital": "每个股票的金额由总资本 × 权重计算。"
+  },
+  "portfolio_detail": {
+    "title": "各股票详细信息",
+    "ticker_col": "股票代码",
+    "weight_col": "权重",
+    "allocation_col": "配置金额（美元）",
+    "return_col": "总回报",
+    "sharpe_col": "夏普比率",
+    "mdd_col": "最大回撤",
+    "source_col": "数据来源"
   },
   "ui": {
     "waiting": "在侧边栏设置参数并点击「执行策略」。",
