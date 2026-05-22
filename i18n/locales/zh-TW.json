@@ -17,7 +17,7 @@
     "buy_hold": "買入持有",
     "ma_crossover": "移動平均線交叉",
     "rsi": "RSI 策略",
-    "new_car": "新車策略"
+    "new_car": "新車 vs. 投資"
   },
   "params": {
     "short_ma": "短期均線",
@@ -116,7 +116,7 @@
     "total_shares": "總持股數：{shares}"
   },
   "new_car_metrics": {
-    "title": "新車策略指標",
+    "title": "新車 vs. 投資指標",
     "total_invested": "總投資額",
     "total_value": "總價值",
     "total_gain": "總收益",
@@ -162,7 +162,7 @@
     "skipped_tickers_warning": "⚠️ 無法載入以下股票的數據：{tickers}。已重新分配剩餘股票的權重。",
     "effective_weights_caption": "實際權重：{weights}",
     "min_overlap_error": "日期重疊不足（{days} 個交易日）。最少需要 30 個交易日 — 請嘗試擴大日期範圍或移除歷史數據有限的股票。",
-    "new_car_portfolio_disabled": "ℹ️ 新車策略是單一資產的「假設情境」，不適用於投資組合模式。",
+    "new_car_portfolio_disabled": "ℹ️ 新車 vs. 投資是單一資產的「假設情境」，不適用於投資組合模式。",
     "amount_from_capital": "每個股票的金額由總資本 × 權重計算。"
   },
   "portfolio_detail": {

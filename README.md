@@ -28,14 +28,14 @@ flowchart TB
 
 ## Features
 - Ticker input and date range selection
-- Strategy picker: Moving Average Crossover, RSI Strategy, Dollar Cost Averaging, Buy & Hold, New Car
+- Strategy picker: Moving Average Crossover, RSI Strategy, Dollar Cost Averaging, Buy & Hold, New Car vs. Investing
 - Strategy-specific params
 - Price chart with buy/sell markers
 - Equity curve vs buy-and-hold
 - Trades table
 - Summary metrics: Total return, Sharpe, Max drawdown
 
-### New Car Strategy
+### New Car vs. Investing
 What if you had invested the money for a new car into a stock instead? This strategy simulates:
 - Down payment invested immediately (either % of car price or an override amount)
 - Recurring payments (weekly / biweekly / monthly) over a chosen term (12–60 months) invested into the stock instead of paying a loan

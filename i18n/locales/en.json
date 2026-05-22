@@ -17,7 +17,7 @@
     "buy_hold": "Buy & Hold",
     "ma_crossover": "Moving Average Crossover",
     "rsi": "RSI Strategy",
-    "new_car": "New Car"
+    "new_car": "New Car vs. Investing"
   },
   "params": {
     "short_ma": "Short MA",
@@ -116,7 +116,7 @@
     "total_shares": "Total shares owned: {shares}"
   },
   "new_car_metrics": {
-    "title": "New Car Strategy Metrics",
+    "title": "New Car vs. Investing Metrics",
     "total_invested": "Total Invested",
     "total_value": "Total Value",
     "total_gain": "Total Gain",
@@ -162,7 +162,7 @@
     "skipped_tickers_warning": "⚠️ Could not load data for: {tickers}. Weights renormalized among remaining tickers.",
     "effective_weights_caption": "Effective weights: {weights}",
     "min_overlap_error": "Insufficient date overlap ({days} trading days). Minimum 30 required — try expanding the date range or removing tickers with limited history.",
-    "new_car_portfolio_disabled": "ℹ️ New Car strategy is a single-asset 'what-if' scenario and is not available in portfolio mode.",
+    "new_car_portfolio_disabled": "ℹ️ New Car vs. Investing is a single-asset 'what-if' scenario and is not available in portfolio mode.",
     "amount_from_capital": "Amount per ticker derived from Total Capital × weight."
   },
   "portfolio_detail": {

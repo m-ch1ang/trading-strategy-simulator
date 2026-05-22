@@ -147,7 +147,7 @@ The selected language persists in `st.session_state["lang"]` for the session.
 - `strategies.buy_hold` - Buy & Hold
 - `strategies.ma_crossover` - Moving Average Crossover
 - `strategies.rsi` - RSI Strategy
-- `strategies.new_car` - New Car strategy
+- `strategies.new_car` - New Car vs. Investing strategy
 
 ### Charts
 - `charts.price_title` - Price chart title (supports `{ticker}` parameter)

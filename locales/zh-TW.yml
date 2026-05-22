@@ -16,7 +16,7 @@ strategies:
   buy_hold: "買入持有"
   ma_crossover: "移動平均線交叉"
   rsi: "RSI 策略"
-  new_car: "新車策略"
+  new_car: "新車 vs. 投資"
   
 params:
   short_ma: "短期均線"
@@ -108,7 +108,7 @@ dca_metrics:
   total_shares: "總持股數：{shares}"
   
 new_car_metrics:
-  title: "新車策略指標"
+  title: "新車 vs. 投資指標"
   total_invested: "總投資額"
   total_value: "總價值"
   total_gain: "總收益"

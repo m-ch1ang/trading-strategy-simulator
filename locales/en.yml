@@ -16,7 +16,7 @@ strategies:
   buy_hold: "Buy & Hold"
   ma_crossover: "Moving Average Crossover"
   rsi: "RSI Strategy"
-  new_car: "New Car"
+  new_car: "New Car vs. Investing"
   
 params:
   short_ma: "Short MA"
@@ -108,7 +108,7 @@ dca_metrics:
   total_shares: "Total shares owned: {shares}"
   
 new_car_metrics:
-  title: "New Car Strategy Metrics"
+  title: "New Car vs. Investing Metrics"
   total_invested: "Total Invested"
   total_value: "Total Value"
   total_gain: "Total Gain"

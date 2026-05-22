@@ -9,6 +9,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from i18n.i18n import t, set_language, get_lang
 
 from data import load_data, calculate_equal_weights
+
+_MARKDOWN_ESCAPE_CHARS = frozenset(r"\*_$[]()#+-{}.!`")
+
+
+def escape_streamlit_markdown(text: str) -> str:
+    """Escape characters Streamlit treats as Markdown/LaTeX (e.g. $ for math mode)."""
+    return "".join(f"\\{c}" if c in _MARKDOWN_ESCAPE_CHARS else c for c in text)
 from strategies import compute_signals
 from backtest import backtest, sharpe_ratio, max_drawdown
 from portfolio import (
@@ -331,7 +338,7 @@ def main():
             params["_computed_periodic_payment"] = periodic_payment
             params["_computed_num_loan_payments"] = num_loan_payments
             params["_total_to_invest"] = dp + (periodic_payment * num_loan_payments)
-            st.caption(t("info.car_payment_summary", dp=f"{dp:,.0f}", num_payments=num_loan_payments, payment=f"{periodic_payment:,.2f}", apr=f"{apr*100:.2f}", total=f"{dp + (periodic_payment * num_loan_payments):,.0f}"))
+            st.caption(escape_streamlit_markdown(t("info.car_payment_summary", dp=f"{dp:,.0f}", num_payments=num_loan_payments, payment=f"{periodic_payment:,.2f}", apr=f"{apr*100:.2f}", total=f"{dp + (periodic_payment * num_loan_payments):,.0f}")))
 
         slippage_bps = st.slider(t("sidebar.slippage_label"), min_value=0, max_value=50, value=0)
 
@@ -462,7 +469,7 @@ def main():
                 apr_text = f" | APR: {apr_display:.2f}%" if apr_display is not None else ""
 
                 st.info(t("new_car_metrics.payment_progress", completed=payments_completed, total=total_expected, status=status_text))
-                st.caption(t("new_car_metrics.payment_details", dp=f"{dca_metrics['down_payment']:,.2f}", loan_pmts=loan_pmts, total_loan=total_loan, payment=f"{dca_metrics['periodic_payment']:,.2f}", apr=apr_text, shares=f"{dca_metrics['total_shares']:.4f}"))
+                st.caption(escape_streamlit_markdown(t("new_car_metrics.payment_details", dp=f"{dca_metrics['down_payment']:,.2f}", loan_pmts=loan_pmts, total_loan=total_loan, payment=f"{dca_metrics['periodic_payment']:,.2f}", apr=apr_text, shares=f"{dca_metrics['total_shares']:.4f}")))
 
             # Buy & Hold specific metrics
             if internal_strategy == "Buy & Hold" and bh_metrics:
