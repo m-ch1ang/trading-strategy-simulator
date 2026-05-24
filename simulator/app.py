@@ -135,16 +135,10 @@ def main():
         if is_portfolio and st.session_state.get(_strategy_key) == t("strategies.new_car"):
             st.session_state[_strategy_key] = t("strategies.dca")
 
-        # --- TICKER / PORTFOLIO INPUTS ---
+        # --- UNIVERSE ---
         if not is_portfolio:
             ticker = st.text_input(t("sidebar.ticker_label"), value="MSFT")
             parsed_tickers = [ticker.strip().upper()] if ticker.strip() else ["MSFT"]
-            # Single-ticker mode includes all strategies
-            strategy = st.selectbox(
-                t("sidebar.strategy"),
-                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")],
-                key=_strategy_key,
-            )
             weights_pct = {parsed_tickers[0]: 100.0}
             total_capital = 10000.0
             portfolio_errors = []
@@ -154,32 +148,13 @@ def main():
                 value="AAPL, MSFT",
                 height=80,
             )
-            # Parse: split by comma or newline, strip, uppercase, deduplicate, keep order
             raw_parts = tickers_raw.replace(",", "\n").split("\n")
             parsed_tickers = list(dict.fromkeys(
                 x.strip().upper() for x in raw_parts if x.strip()
             ))
-            # Bug #3: "New Car" is a single-asset scenario — hide it entirely in portfolio mode
-            strategy = st.selectbox(
-                t("sidebar.strategy"),
-                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi")],
-                key=_strategy_key,
-            )
-
-            if strategy != t("strategies.dca"):
-                total_capital = st.number_input(
-                    t("portfolio.total_capital_label"),
-                    min_value=100.0,
-                    value=10000.0,
-                    step=1000.0,
-                )
-            else:
-                total_capital = 0.0
 
             st.caption(t("portfolio.allocations_header"))
 
-            # Bug #1 & #2: Auto-rebalance weights when ticker list changes.
-            # Detect ticker change by comparing to previous render's ticker list.
             _prev_tickers = st.session_state.get("_portfolio_tickers_prev", None)
             _cur_tickers = tuple(parsed_tickers)
             if _cur_tickers != _prev_tickers and parsed_tickers:
@@ -188,14 +163,12 @@ def main():
                     st.session_state[f"weight_{_tk}"] = _w
                 st.session_state["_portfolio_tickers_prev"] = _cur_tickers
 
-            # Auto Equal Weights button — uses exact-total helper (Bug #2)
             if st.button(t("portfolio.auto_equal_weights")) and parsed_tickers:
                 _new_weights = calculate_equal_weights(parsed_tickers)
                 for _tk, _w in _new_weights.items():
                     st.session_state[f"weight_{_tk}"] = _w
                 st.rerun()
 
-            # Per-ticker weight inputs
             weights_pct = {}
             if parsed_tickers:
                 for tk in parsed_tickers:
@@ -211,7 +184,6 @@ def main():
                     )
                     weights_pct[tk] = w
 
-            # Weight sum indicator
             weight_sum = sum(weights_pct.values())
             if abs(weight_sum - 100.0) <= 0.01:
                 st.success(f"{t('portfolio.weight_sum_label')}: {weight_sum:.2f}% ✓")
@@ -220,7 +192,7 @@ def main():
 
             portfolio_errors = validate_portfolio_inputs(parsed_tickers, weights_pct)
 
-        # --- DATES ---
+        # --- PERIOD ---
         col1, col2 = st.columns(2)
         with col1:
             start_date = st.date_input(
@@ -233,6 +205,20 @@ def main():
                 t("sidebar.end_date"),
                 value=datetime.today(),
                 max_value=datetime.today(),
+            )
+
+        # --- STRATEGY ---
+        if not is_portfolio:
+            strategy = st.selectbox(
+                t("sidebar.strategy"),
+                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi"), t("strategies.new_car")],
+                key=_strategy_key,
+            )
+        else:
+            strategy = st.selectbox(
+                t("sidebar.strategy"),
+                [t("strategies.dca"), t("strategies.buy_hold"), t("strategies.ma_crossover"), t("strategies.rsi")],
+                key=_strategy_key,
             )
 
         # Map translated strategy names back to internal names
@@ -249,8 +235,19 @@ def main():
         # so this is False in normal flow but kept as a run-button backstop.
         new_car_in_portfolio = is_portfolio and internal_strategy == "New Car"
 
-        # --- PARAMS ---
+        # --- STRATEGY PARAMS ---
         params = {}
+        if is_portfolio:
+            if strategy == t("strategies.dca"):
+                total_capital = 0.0
+            else:
+                total_capital = st.number_input(
+                    t("portfolio.total_capital_label"),
+                    min_value=100.0,
+                    value=10000.0,
+                    step=1000.0,
+                )
+
         if strategy == t("strategies.ma_crossover"):
             c1, c2 = st.columns(2)
             with c1:
