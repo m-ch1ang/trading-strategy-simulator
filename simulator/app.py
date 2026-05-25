@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from i18n.i18n import t, set_language, get_lang
+from footer import render_footer
+from privacy_page import render_privacy_page
 
 from data import load_data, calculate_equal_weights
 
@@ -63,9 +65,7 @@ def resolve_plotly_module():
 go = resolve_plotly_module()
 
 
-def main():
-    st.set_page_config(page_title=t("app.title"), layout="wide")
-
+def _inject_app_css() -> None:
     # Bug #5 (partial mitigation): Streamlit's base-web DatePicker opens its calendar
     # popup on any focus event, including Tab navigation. The `openOnFocus` prop is not
     # exposed by Streamlit's Python API, so a full fix requires a custom component or a
@@ -97,6 +97,39 @@ def main():
 </style>
 """, unsafe_allow_html=True)
 
+
+def _ensure_nav_pages() -> None:
+    if "nav_page_home" in st.session_state:
+        return
+    st.session_state.nav_page_home = st.Page(
+        render_home_page,
+        title="Trading Strategy Simulator",
+        default=True,
+    )
+    st.session_state.nav_page_privacy = st.Page(
+        render_privacy_page,
+        title="Privacy Policy",
+        url_path="Privacy",
+    )
+
+
+def render_home_page() -> None:
+    _run_app()
+    render_footer(page="home")
+
+
+def main():
+    st.set_page_config(page_title=t("app.title"), layout="wide")
+    _inject_app_css()
+    _ensure_nav_pages()
+    nav = st.navigation(
+        [st.session_state.nav_page_home, st.session_state.nav_page_privacy],
+        position="hidden",
+    )
+    nav.run()
+
+
+def _run_app():
     st.title(t("app.title"))
     st.caption(t("app.disclaimer"))
 

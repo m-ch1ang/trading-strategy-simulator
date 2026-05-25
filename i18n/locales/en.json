@@ -204,6 +204,12 @@
     "en": "English",
     "zh_tw": "繁體中文",
     "zh_cn": "简体中文"
+  },
+  "footer": {
+    "privacy": "Privacy Policy",
+    "home": "Back to Simulator",
+    "privacy_page_title": "Privacy Policy",
+    "privacy_missing": "Privacy policy file (PRIVACY.md) was not found."
   }
 }
 

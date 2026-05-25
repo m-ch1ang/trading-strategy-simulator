@@ -204,6 +204,12 @@
     "en": "English",
     "zh_tw": "繁體中文",
     "zh_cn": "简体中文"
+  },
+  "footer": {
+    "privacy": "隐私政策",
+    "home": "返回模拟器",
+    "privacy_page_title": "隐私政策",
+    "privacy_missing": "找不到隐私政策文件（PRIVACY.md）。"
   }
 }
 
