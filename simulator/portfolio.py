@@ -99,6 +99,10 @@ def run_portfolio_backtest(
                 sig_df, slippage_bps=slippage_bps, strategy=strategy, params=ticker_params,
                 allocation=ticker_allocation,
             )
+            if strategy == "Dollar Cost Averaging" and dca_metrics:
+                dollar_allocation = dca_metrics.get("total_invested", 0.0)
+            else:
+                dollar_allocation = total_capital * weights_pct[tk] / 100.0
             ticker_results[tk] = {
                 "bt": bt,
                 "trades_df": trades_df,
@@ -106,7 +110,7 @@ def run_portfolio_backtest(
                 "bh_metrics": bh_metrics,
                 "source": source,
                 "weight_pct": weights_pct[tk],
-                "dollar_allocation": total_capital * weights_pct[tk] / 100.0,
+                "dollar_allocation": dollar_allocation,
                 "sig_df": sig_df,
             }
         except Exception:
