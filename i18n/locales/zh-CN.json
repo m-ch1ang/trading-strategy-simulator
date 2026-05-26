@@ -91,6 +91,7 @@
     "tip": "💡 提示：确保您使用正确的代码格式（例如：AAPL 代表苹果，MSFT 代表微软）",
     "report_issue": "🐛 如果您已验证代码正确但仍无法使用，请联系 mike.chiang996@gmail.com 报告此问题。",
     "no_data": "未加载 {ticker} 的数据。请检查代码或日期范围。",
+    "invalid_date_range": "结束日期（{end}）必须晚于开始日期（{start}）。请选择有效的回测区间。",
     "backtest_error": "回测期间发生错误：{error}",
     "try_again": "请重试，如果问题持续存在，请联系支持。",
     "portfolio_all_failed": "❌ 无法加载任何所选股票的数据。请检查代码和日期范围。"

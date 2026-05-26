@@ -206,12 +206,12 @@ def _run_app():
             if parsed_tickers:
                 for tk in parsed_tickers:
                     key = f"weight_{tk}"
-                    default_val = float(st.session_state.get(key, 100.0 / len(parsed_tickers)))
+                    if key not in st.session_state:
+                        st.session_state[key] = 100.0 / len(parsed_tickers)
                     w = st.number_input(
                         t("portfolio.weight_label", ticker=tk),
                         min_value=0.0,
                         max_value=100.0,
-                        value=default_val,
                         step=1.0,
                         key=key,
                     )
@@ -238,6 +238,16 @@ def _run_app():
                 t("sidebar.end_date"),
                 value=datetime.today(),
                 max_value=datetime.today(),
+            )
+
+        date_range_invalid = end_date <= start_date
+        if date_range_invalid:
+            st.error(
+                t(
+                    "errors.invalid_date_range",
+                    start=start_date.isoformat(),
+                    end=end_date.isoformat(),
+                )
             )
 
         # --- STRATEGY ---
@@ -281,12 +291,19 @@ def _run_app():
                     step=1000.0,
                 )
 
+        ma_crossover_invalid = False
         if strategy == t("strategies.ma_crossover"):
             c1, c2 = st.columns(2)
             with c1:
                 params["short"] = st.number_input(t("params.short_ma"), min_value=1, max_value=250, value=20, step=1)
             with c2:
                 params["long"] = st.number_input(t("params.long_ma"), min_value=2, max_value=400, value=50, step=1)
+            if params["short"] >= params["long"]:
+                st.error(
+                    f"Short MA ({params['short']}) must be **less than** Long MA ({params['long']}). "
+                    "A crossover signal requires the short window to be shorter than the long window."
+                )
+                ma_crossover_invalid = True
         elif strategy == t("strategies.rsi"):
             c1, c2, c3 = st.columns(3)
             with c1:
@@ -350,7 +367,11 @@ def _run_app():
 
         slippage_bps = st.slider(t("sidebar.slippage_label"), min_value=0, max_value=50, value=0)
 
-        run_disabled = is_portfolio and (bool(portfolio_errors) or new_car_in_portfolio)
+        run_disabled = (
+            date_range_invalid
+            or ma_crossover_invalid
+            or (is_portfolio and (bool(portfolio_errors) or new_car_in_portfolio))
+        )
         run = st.button(
             t("sidebar.run_button"),
             type="primary",
@@ -419,6 +440,16 @@ def _run_app():
     # RUN BLOCK                                                            #
     # ------------------------------------------------------------------ #
     if run:
+        if end_date <= start_date:
+            st.error(
+                t(
+                    "errors.invalid_date_range",
+                    start=start_date.isoformat(),
+                    end=end_date.isoformat(),
+                )
+            )
+            return
+
         start_str = start_date.isoformat()
         end_str = (end_date + timedelta(days=1)).isoformat()
 

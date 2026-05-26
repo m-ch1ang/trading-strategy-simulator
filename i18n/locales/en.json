@@ -91,6 +91,7 @@
     "tip": "💡 Tip: Make sure you're using the correct ticker format (e.g., AAPL for Apple, MSFT for Microsoft)",
     "report_issue": "🐛 If you've verified the ticker is correct and it still doesn't work, please reach out to mike.chiang996@gmail.com to report this issue.",
     "no_data": "No data loaded for {ticker}. Check ticker or date range.",
+    "invalid_date_range": "End Date ({end}) must be after Start Date ({start}). Please select a valid backtest period.",
     "backtest_error": "Error during backtesting: {error}",
     "try_again": "Please try again or contact support if the issue persists.",
     "portfolio_all_failed": "❌ No data could be loaded for any of the selected tickers. Check symbols and date range."

@@ -91,6 +91,7 @@
     "tip": "💡 提示：確保您使用正確的代碼格式（例如：AAPL 代表蘋果，MSFT 代表微軟）",
     "report_issue": "🐛 如果您已驗證代碼正確但仍無法使用，請聯繫 mike.chiang996@gmail.com 報告此問題。",
     "no_data": "未載入 {ticker} 的數據。請檢查代碼或日期範圍。",
+    "invalid_date_range": "結束日期（{end}）必須晚於開始日期（{start}）。請選擇有效的回測區間。",
     "backtest_error": "回測期間發生錯誤：{error}",
     "try_again": "請重試，如果問題持續存在，請聯繫支援。",
     "portfolio_all_failed": "❌ 無法載入任何所選股票的數據。請檢查代碼和日期範圍。"
