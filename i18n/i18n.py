@@ -1,8 +1,20 @@
 import json
 import os
 import streamlit as st
+from babel import Locale
+from babel.numbers import format_currency, format_decimal, format_percent
 
 _SUPPORTED = ["en", "zh-CN", "zh-TW", "ja", "ko", "vi"]
+
+# Babel rejects dashed tags ("en-US"), so these must stay underscored.
+_LOCALE_MAP = {
+    "en": "en_US",
+    "zh-CN": "zh_CN",
+    "zh-TW": "zh_TW",
+    "ja": "ja_JP",
+    "ko": "ko_KR",
+    "vi": "vi_VN",
+}
 
 # Always reload translations from disk so updates appear immediately
 _CACHE = {}
@@ -76,4 +88,38 @@ def t(key: str, **kwargs):
         except Exception:
             pass
     return text
+
+
+def _locale():
+    return Locale.parse(_LOCALE_MAP.get(get_lang(), "en_US"))
+
+
+def _pattern(decimal_places: int, suffix: str = ""):
+    return "#,##0" + ("." + "0" * decimal_places if decimal_places else "") + suffix
+
+
+def format_currency_localized(amount: float, currency: str = "USD") -> str:
+    """Format an amount in the UI language's conventions.
+
+    Currency is a property of the instrument, not the UI language, so callers
+    pass it explicitly rather than having it inferred from the active locale.
+    """
+    try:
+        return format_currency(amount, currency, locale=_locale())
+    except Exception:
+        return f"{amount:,.2f} {currency}"
+
+
+def format_number_localized(number: float, decimal_places: int = 2) -> str:
+    try:
+        return format_decimal(number, format=_pattern(decimal_places), locale=_locale())
+    except Exception:
+        return f"{number:,.{decimal_places}f}"
+
+
+def format_percent_localized(value: float, decimal_places: int = 2) -> str:
+    try:
+        return format_percent(value, format=_pattern(decimal_places, "%"), locale=_locale())
+    except Exception:
+        return f"{value * 100:.{decimal_places}f}%"
 
