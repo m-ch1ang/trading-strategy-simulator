@@ -11,11 +11,12 @@ def render_language_selector() -> None:
         "English": "en",
         "繁體中文": "zh-TW",
         "简体中文": "zh-CN",
+        "日本語": "ja",
     }
     code_to_label = {v: k for k, v in label_to_code.items()}
     current = get_lang()
     sel = st.selectbox(
-        t("language.label") + " / 語言 / 语言",
+        t("language.label") + " / 語言 / 语言 / 言語",
         options=list(label_to_code.keys()),
         index=list(label_to_code.keys()).index(code_to_label.get(current, "English")),
         key="footer_lang_select",

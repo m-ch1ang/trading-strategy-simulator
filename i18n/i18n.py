@@ -2,7 +2,7 @@ import json
 import os
 import streamlit as st
 
-_SUPPORTED = ["en", "zh-CN", "zh-TW"]
+_SUPPORTED = ["en", "zh-CN", "zh-TW", "ja"]
 
 # Always reload translations from disk so updates appear immediately
 _CACHE = {}
@@ -36,6 +36,8 @@ def get_lang():
             st.session_state["lang"] = "zh-CN"
         elif "hant" in d or d.startswith("zh-tw") or d.startswith("zh-hk") or d.startswith("zh-mo"):
             st.session_state["lang"] = "zh-TW"
+        elif d.startswith("ja"):
+            st.session_state["lang"] = "ja"
         else:
             st.session_state["lang"] = "en"
     else:

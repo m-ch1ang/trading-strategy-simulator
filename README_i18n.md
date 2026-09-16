@@ -4,7 +4,7 @@ This document explains how to add and maintain translation keys for the Trading 
 
 ## Overview
 
-The app uses a lightweight JSON-based i18n system located in `i18n/`. Translations are stored as JSON files in `i18n/locales/` with support for English (`en`), Simplified Chinese (`zh-CN`), and Traditional Chinese (`zh-TW`).
+The app uses a lightweight JSON-based i18n system located in `i18n/`. Translations are stored as JSON files in `i18n/locales/` with support for English (`en`), Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW`), and Japanese (`ja`).
 
 ## File Structure
 
@@ -15,7 +15,8 @@ i18n/
 └── locales/
     ├── en.json      # English translations
     ├── zh-CN.json   # Simplified Chinese translations
-    └── zh-TW.json   # Traditional Chinese translations
+    ├── zh-TW.json   # Traditional Chinese translations
+    └── ja.json      # Japanese translations
 ```
 
 ## Translation Key Structure
@@ -46,7 +47,7 @@ st.error(t("errors.fetch_error", ticker="AAPL"))
 from i18n.i18n import t, set_language, get_lang
 
 # Get current language
-current_lang = get_lang()  # Returns "en", "zh-CN", or "zh-TW"
+current_lang = get_lang()  # Returns "en", "zh-CN", "zh-TW", or "ja"
 
 # Set language
 set_language("zh-CN")
@@ -71,6 +72,7 @@ Edit `i18n/locales/en.json` and add your key following the existing structure:
 Add the same key structure to:
 - `i18n/locales/zh-CN.json` (Simplified Chinese)
 - `i18n/locales/zh-TW.json` (Traditional Chinese)
+- `i18n/locales/ja.json` (Japanese)
 
 ### Step 3: Use in Code
 
@@ -115,6 +117,7 @@ t("errors.fetch_error", ticker="AAPL")
 The app automatically detects the browser language on first load:
 - `zh-Hans*` or `zh-CN` → Simplified Chinese
 - `zh-Hant*`, `zh-TW`, `zh-HK`, or `zh-MO` → Traditional Chinese
+- `ja*` → Japanese
 - Otherwise → English
 
 The selected language persists in `st.session_state["lang"]` for the session.
@@ -200,8 +203,8 @@ from i18n.i18n import t, set_language, get_lang
 
 When adding new features:
 1. Identify all user-facing strings
-2. Add translation keys to all three language files
+2. Add translation keys to all four language files
 3. Replace hardcoded strings with `t()` calls
-4. Test in all three languages
+4. Test in all four languages
 5. Update this documentation if adding new sections
 
