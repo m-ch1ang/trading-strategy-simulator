@@ -429,13 +429,13 @@ def _run_app():
         - **{t("instructions.non_us_stocks")}**
           - {t("instructions.uk_stocks")}
           - {t("instructions.ca_stocks")}
-          - {t("instructions.de_stocks")}
-          - {t("instructions.au_stocks")}
           - {t("instructions.cn_stocks")}
           - {t("instructions.hk_stocks")}
           - {t("instructions.tw_stocks")}
           - {t("instructions.sg_stocks")}
           - {t("instructions.jp_stocks")}
+          - {t("instructions.kr_stocks")}
+          - {t("instructions.vn_stocks")}
         - **{t("instructions.crypto")}**
         - {t("instructions.not_sure")}
 
