@@ -20,6 +20,11 @@ def escape_streamlit_markdown(text: str) -> str:
     return "".join(f"\\{c}" if c in _MARKDOWN_ESCAPE_CHARS else c for c in text)
 
 
+def _translate_frequency(value: str) -> str:
+    """Display label for a frequency option; the stored value stays English."""
+    return t(f"frequency.{value.lower()}")
+
+
 def _collapse_instructions_expander():
     """Remount the instructions expander in collapsed state (see main())."""
     st.session_state["instructions_expanded"] = False
@@ -325,7 +330,12 @@ def _run_app():
         elif strategy == t("strategies.dca"):
             c1, c2 = st.columns(2)
             with c1:
-                params["frequency"] = st.selectbox(t("params.buy_frequency"), ["Weekly", "Monthly", "Quarterly"], index=1)
+                params["frequency"] = st.selectbox(
+                    t("params.buy_frequency"),
+                    ["Weekly", "Monthly", "Quarterly"],
+                    index=1,
+                    format_func=_translate_frequency,
+                )
             with c2:
                 params["amount"] = st.number_input(t("params.dollar_amount"), min_value=100, value=1000, step=100)
         elif strategy == t("strategies.new_car"):
@@ -337,7 +347,12 @@ def _run_app():
                 params["down_payment_amount"] = st.number_input(t("params.down_payment"), min_value=0, value=6000, step=500)
             with c2:
                 params["term_months"] = st.selectbox(t("params.term_months"), [12, 24, 36, 48, 60], index=2)
-                params["payment_frequency"] = st.selectbox(t("params.payment_frequency"), ["Monthly", "Biweekly", "Weekly"], index=0)
+                params["payment_frequency"] = st.selectbox(
+                    t("params.payment_frequency"),
+                    ["Monthly", "Biweekly", "Weekly"],
+                    index=0,
+                    format_func=_translate_frequency,
+                )
             with c3:
                 params["apr"] = st.number_input(t("params.apr"), min_value=0.0, max_value=25.0, value=5.0, step=0.1)
 

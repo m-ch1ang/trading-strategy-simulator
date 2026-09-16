@@ -34,6 +34,12 @@
     "payment_frequency": "付款頻率",
     "apr": "年利率（%）"
   },
+  "frequency": {
+    "weekly": "每週",
+    "biweekly": "每兩週",
+    "monthly": "每月",
+    "quarterly": "每季"
+  },
   "info": {
     "buy_hold_desc": "買入持有策略：在開始時買入並持有至結束。",
     "new_car_desc": "如果我將買新車的錢投資這支股票會如何？頭期款和分期付款（年利率）將用於投資。",

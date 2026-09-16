@@ -34,6 +34,12 @@
     "payment_frequency": "납입 주기",
     "apr": "연이율 (%)"
   },
+  "frequency": {
+    "weekly": "매주",
+    "biweekly": "격주",
+    "monthly": "매월",
+    "quarterly": "분기별"
+  },
   "info": {
     "buy_hold_desc": "매수 후 보유 전략: 시작 시점에 매수하여 종료 시점까지 보유합니다.",
     "new_car_desc": "새 차를 사는 대신 이 종목을 샀다면? 계약금과 할부 상환금(연이율)을 투자한 경우를 시뮬레이션합니다.",

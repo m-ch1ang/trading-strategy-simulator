@@ -34,6 +34,12 @@
     "payment_frequency": "Tần suất",
     "apr": "Lãi suất năm (%)"
   },
+  "frequency": {
+    "weekly": "Hàng tuần",
+    "biweekly": "Hai tuần một lần",
+    "monthly": "Hàng tháng",
+    "quarterly": "Hàng quý"
+  },
   "info": {
     "buy_hold_desc": "Chiến lược Mua và nắm giữ: Mua vào lúc bắt đầu và giữ đến hết kỳ.",
     "new_car_desc": "Nếu bạn mua cổ phiếu này thay vì mua một chiếc xe mới thì sao? Tiền trả trước và các khoản trả góp (theo lãi suất năm) sẽ được đem đi đầu tư.",

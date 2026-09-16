@@ -34,6 +34,12 @@
     "payment_frequency": "Frequency",
     "apr": "APR (%)"
   },
+  "frequency": {
+    "weekly": "Weekly",
+    "biweekly": "Biweekly",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly"
+  },
   "info": {
     "buy_hold_desc": "Buy & Hold strategy: Buy at the start and hold until the end.",
     "new_car_desc": "What if I bought this stock instead of a new car? Down payment and amortized loan payments (APR) get invested.",
