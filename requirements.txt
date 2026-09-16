@@ -7,4 +7,3 @@ yfinance
 setuptools
 python-dateutil
 babel
-pyyaml
