@@ -4,7 +4,7 @@ This document explains how to add and maintain translation keys for the Trading 
 
 ## Overview
 
-The app uses a lightweight JSON-based i18n system located in `i18n/`. Translations are stored as JSON files in `i18n/locales/` with support for English (`en`), Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW`), Japanese (`ja`), and Korean (`ko`).
+The app uses a lightweight JSON-based i18n system located in `i18n/`. Translations are stored as JSON files in `i18n/locales/` with support for English (`en`), Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW`), Japanese (`ja`), Korean (`ko`), and Vietnamese (`vi`).
 
 ## File Structure
 
@@ -17,7 +17,8 @@ i18n/
     ├── zh-CN.json   # Simplified Chinese translations
     ├── zh-TW.json   # Traditional Chinese translations
     ├── ja.json      # Japanese translations
-    └── ko.json      # Korean translations
+    ├── ko.json      # Korean translations
+    └── vi.json      # Vietnamese translations
 ```
 
 ## Translation Key Structure
@@ -48,7 +49,7 @@ st.error(t("errors.fetch_error", ticker="AAPL"))
 from i18n.i18n import t, set_language, get_lang
 
 # Get current language
-current_lang = get_lang()  # Returns "en", "zh-CN", "zh-TW", "ja", or "ko"
+current_lang = get_lang()  # Returns "en", "zh-CN", "zh-TW", "ja", "ko", or "vi"
 
 # Set language
 set_language("zh-CN")
@@ -75,6 +76,7 @@ Add the same key structure to:
 - `i18n/locales/zh-TW.json` (Traditional Chinese)
 - `i18n/locales/ja.json` (Japanese)
 - `i18n/locales/ko.json` (Korean)
+- `i18n/locales/vi.json` (Vietnamese)
 
 ### Step 3: Use in Code
 
@@ -121,6 +123,7 @@ The app automatically detects the browser language on first load:
 - `zh-Hant*`, `zh-TW`, `zh-HK`, or `zh-MO` → Traditional Chinese
 - `ja*` → Japanese
 - `ko*` → Korean
+- `vi*` → Vietnamese
 - Otherwise → English
 
 The selected language persists in `st.session_state["lang"]` for the session.
@@ -206,8 +209,8 @@ from i18n.i18n import t, set_language, get_lang
 
 When adding new features:
 1. Identify all user-facing strings
-2. Add translation keys to all five language files
+2. Add translation keys to all six language files
 3. Replace hardcoded strings with `t()` calls
-4. Test in all five languages
+4. Test in all six languages
 5. Update this documentation if adding new sections
 

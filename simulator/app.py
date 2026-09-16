@@ -142,12 +142,13 @@ def _run_app():
             "简体中文": "zh-CN",
             "日本語": "ja",
             "한국어": "ko",
+            "Tiếng Việt": "vi",
         }
         code_to_label = {v: k for k, v in label_to_code.items()}
 
         current = get_lang()
         sel = st.selectbox(
-            t("language.label") + " / 語言 / 语言 / 言語 / 언어",
+            t("language.label") + " / 語言 / 语言 / 言語 / 언어 / Ngôn ngữ",
             list(label_to_code.keys()),
             index=list(label_to_code.values()).index(current) if current in label_to_code.values() else 0
         )
